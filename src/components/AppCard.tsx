@@ -23,46 +23,46 @@ export function AppCard({ app }: AppCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex flex-col rounded-xl border border-border bg-card p-6 transition-all duration-200",
+        "group relative flex flex-col rounded-2xl border border-border bg-card p-8 transition-all duration-300",
         isLocked 
-          ? "opacity-60 grayscale" 
-          : "hover:shadow-lg hover:border-primary/20"
+          ? "opacity-50 grayscale" 
+          : "hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 hover:-translate-y-1"
       )}
     >
       {/* Icon with color or lock overlay */}
-      <div className="relative mb-4">
+      <div className="relative mb-6">
         <div
           className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-lg",
+            "flex h-14 w-14 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
             isLocked ? "bg-muted/50" : "bg-card"
           )}
           style={{
-            backgroundColor: isLocked ? undefined : `${color}15`,
+            backgroundColor: isLocked ? undefined : `${color}12`,
           }}
         >
           <Icon
-            className="h-6 w-6"
-            style={{ color: isLocked ? "hsl(var(--muted))" : color }}
+            className="h-7 w-7"
+            style={{ color: isLocked ? "hsl(var(--muted-foreground))" : color }}
           />
         </div>
         {isLocked && (
-          <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-muted">
+          <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-muted border-2 border-card">
             <Lock className="h-3 w-3 text-muted-foreground" />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="mb-4 flex-1">
-        <div className="mb-2 flex items-center gap-2">
-          <h3 className="font-semibold text-card-foreground">{name}</h3>
+      <div className="mb-6 flex-1">
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-card-foreground">{name}</h3>
           {isEditor && (
-            <Badge variant="default" className="text-xs">
+            <Badge variant="default" className="text-xs px-2 py-0.5">
               Editor
             </Badge>
           )}
           {isViewer && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs px-2 py-0.5">
               Read Only
             </Badge>
           )}

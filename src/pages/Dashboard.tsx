@@ -11,52 +11,58 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-12 max-w-5xl">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Good morning, {currentUser.name.split(" ")[0]}
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">
+            Welcome back, {currentUser.name.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-2 text-muted-foreground text-lg">
             Access your applications and tools from one place
           </p>
         </div>
 
         {/* Apps with Full Access */}
-        <section className="mb-8">
-          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Full Access
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {editorApps.map((app) => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
+        {editorApps.length > 0 && (
+          <section className="mb-10">
+            <h2 className="mb-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">
+              Full Access
+            </h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {editorApps.map((app) => (
+                <AppCard key={app.id} app={app} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Apps with View Access */}
-        <section className="mb-8">
-          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            View Only
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {viewerApps.map((app) => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
+        {viewerApps.length > 0 && (
+          <section className="mb-10">
+            <h2 className="mb-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">
+              View Only
+            </h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {viewerApps.map((app) => (
+                <AppCard key={app.id} app={app} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Locked Apps */}
-        <section>
-          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Requires Access
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {lockedApps.map((app) => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
+        {lockedApps.length > 0 && (
+          <section className="mb-10">
+            <h2 className="mb-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">
+              Requires Access
+            </h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {lockedApps.map((app) => (
+                <AppCard key={app.id} app={app} />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
