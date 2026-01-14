@@ -1,12 +1,17 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import type { Application, UserApplication } from '@/types/database';
 
 // Buscar todas as aplicações do usuário com suas permissões
 export async function getUserApplications(): Promise<UserApplication[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
   // #region agent log
   fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:6',message:'getUserApplications called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
   // #endregion
-  const { data, error } = await supabase.rpc('get_user_applications');
+  const { data, error } = await supabase
+    .schema('Hub_Flex')
+    .rpc('hub_get_user_applications');
   // #region agent log
   fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:9',message:'RPC call completed',data:{hasError:!!error,hasData:!!data,dataLength:data?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
   // #endregion
@@ -27,9 +32,13 @@ export async function getUserApplications(): Promise<UserApplication[]> {
 
 // Buscar todas as aplicações (admin)
 export async function getAllApplications(): Promise<Application[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('applications')
+    .schema('Hub_Flex')
+    .from('hub_applications')
     .select('*')
     .order('display_order');
 
@@ -45,9 +54,13 @@ export async function getAllApplications(): Promise<Application[]> {
 export async function createApplication(
   app: Omit<Application, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Application> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('applications')
+    .schema('Hub_Flex')
+    .from('hub_applications')
     .insert(app)
     .select()
     .single();
@@ -65,9 +78,13 @@ export async function updateApplication(
   id: string,
   updates: Partial<Omit<Application, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<Application> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('applications')
+    .schema('Hub_Flex')
+    .from('hub_applications')
     .update(updates)
     .eq('id', id)
     .select()
@@ -83,9 +100,13 @@ export async function updateApplication(
 
 // Deletar aplicação
 export async function deleteApplication(id: string): Promise<void> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { error } = await supabase
-    .schema('hub')
-    .from('applications')
+    .schema('Hub_Flex')
+    .from('hub_applications')
     .delete()
     .eq('id', id);
 
@@ -97,9 +118,13 @@ export async function deleteApplication(id: string): Promise<void> {
 
 // Buscar aplicação por ID
 export async function getApplicationById(id: string): Promise<Application | null> {
+  if (!isSupabaseAvailable) {
+    return null;
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('applications')
+    .schema('Hub_Flex')
+    .from('hub_applications')
     .select('*')
     .eq('id', id)
     .single();

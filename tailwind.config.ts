@@ -96,7 +96,7 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'DM Sans',
+  				'Rubik',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',

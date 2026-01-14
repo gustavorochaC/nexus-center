@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSupabaseAvailable } from '@/lib/supabase';
 import { Loop } from '@mui/icons-material';
 
 interface ProtectedRouteProps {
@@ -10,6 +11,11 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, isLoading, isAdmin } = useAuth();
   const location = useLocation();
+
+  // Se Supabase não estiver disponível, permitir acesso livre
+  if (!isSupabaseAvailable) {
+    return <>{children}</>;
+  }
 
   // Exibir loading enquanto verifica autenticação
   if (isLoading) {

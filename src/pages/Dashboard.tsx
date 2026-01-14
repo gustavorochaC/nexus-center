@@ -1,11 +1,14 @@
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { AppCard } from "@/components/AppCard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSettingsModal } from "@/contexts/SettingsModalContext";
+import Settings from "@/pages/Settings";
 import type { UserApplication } from "@/types/database";
-import { Person, AutoAwesome } from "@mui/icons-material";
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const { isOpen, closeSettings } = useSettingsModal();
 
   // Primary Applications (High Priority)
   const primaryApps: UserApplication[] = [
@@ -17,6 +20,7 @@ export default function Dashboard() {
       color: "#ef4444",
       port: 8084,
       base_url: "http://192.168.1.220",
+      tier: "primary",
       display_order: 1,
       access_level: "editor",
     },
@@ -28,6 +32,7 @@ export default function Dashboard() {
       color: "#10b981",
       port: 8082,
       base_url: "http://192.168.1.220",
+      tier: "primary",
       display_order: 2,
       access_level: "editor",
     },
@@ -43,6 +48,7 @@ export default function Dashboard() {
       color: "#3b82f6",
       port: 8080,
       base_url: "http://192.168.1.220",
+      tier: "secondary",
       display_order: 1,
       access_level: "editor",
     },
@@ -54,6 +60,7 @@ export default function Dashboard() {
       color: "#8b5cf6",
       port: 8081,
       base_url: "http://192.168.1.220",
+      tier: "secondary",
       display_order: 2,
       access_level: "editor",
     },
@@ -65,46 +72,22 @@ export default function Dashboard() {
       color: "#f59e0b",
       port: 8083,
       base_url: "http://192.168.1.220",
+      tier: "secondary",
       display_order: 3,
       access_level: "editor",
     },
   ];
 
   const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
-  const initials = profile?.full_name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "U";
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* User Profile Section */}
-        <div className="mb-8 flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 border border-purple-500/20">
-          {/* Avatar */}
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 text-white font-semibold text-xl shadow-lg">
-            {initials}
-          </div>
+      {/* Settings Modal */}
+      {isOpen && <Settings onClose={closeSettings} />}
 
-          {/* User Info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                {profile?.full_name || "Usuário"}
-              </h2>
-              <AutoAwesome className="h-5 w-5 text-purple-500" />
-            </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Person className="h-4 w-4" />
-              {profile?.email || "usuario@exemplo.com"}
-            </p>
-          </div>
-        </div>
-
+      <main className="container mx-auto px-4 py-8 max-w-7xl pb-24">
         {/* Welcome Section */}
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-3 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -145,6 +128,8 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }

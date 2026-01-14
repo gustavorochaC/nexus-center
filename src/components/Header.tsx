@@ -1,5 +1,5 @@
-import { Logout, ExpandMore, Settings, Loop } from "@mui/icons-material";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Logout, ExpandMore, Settings, Loop, AdminPanelSettings } from "@mui/icons-material";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,12 +9,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
+import { useSettingsModal } from "@/contexts/SettingsModalContext";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut, isAdmin } = useAuth();
+  const { settings } = useUserSettings();
+  const { openSettings, isOpen } = useSettingsModal();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -33,27 +37,26 @@ export function Header() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const displayName = profile?.full_name || user?.email || "Usuário";
+  // Usar nome das configurações se disponível, senão usar perfil/email
+  const displayName = settings.displayName || profile?.full_name || user?.email || "Usuário";
   const displayEmail = user?.email || "";
-  const initials = getInitials(profile?.full_name);
+  const initials = getInitials(settings.displayName || profile?.full_name);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur-sm">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
-        <Link to="/dashboard" className="flex items-center gap-3">
-          <img 
-            src="/flexi-logo.png" 
-            alt="Flexibase" 
-            className="h-10 object-contain"
-          />
-        </Link>
-
-        {/* User Menu */}
+    <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+      {/* Container que espelha o Dashboard */}
+      <div className="container mx-auto px-4 max-w-7xl relative w-full">
+        {/* User Menu - Alinhado com o container do Dashboard */}
+        <div className={`absolute top-8 right-4 z-50 pointer-events-auto transition-opacity duration-200 ${
+          isOpen ? 'opacity-50' : ''
+        }`}>
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+          <DropdownMenuTrigger className="group flex items-center gap-3 rounded-full border border-border/50 bg-background/50 px-3 py-2 transition-all duration-200 hover:bg-accent/50 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <Avatar className="h-8 w-8 ring-2 ring-background">
+              {settings.avatarUrl && (
+                <AvatarImage src={settings.avatarUrl} alt={displayName} />
+              )}
+              <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -62,7 +65,7 @@ export function Header() {
                 {displayName}
               </p>
             </div>
-            <ExpandMore className="h-4 w-4 text-muted-foreground" />
+            <ExpandMore className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:rotate-180" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
@@ -80,10 +83,15 @@ export function Header() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             
+            <DropdownMenuItem onClick={openSettings}>
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </DropdownMenuItem>
+            
             {isAdmin && (
               <>
                 <DropdownMenuItem onClick={() => navigate("/admin")}>
-                  <Settings className="mr-2 h-4 w-4" />
+                  <AdminPanelSettings className="mr-2 h-4 w-4" />
                   Painel Admin
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -104,6 +112,7 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );

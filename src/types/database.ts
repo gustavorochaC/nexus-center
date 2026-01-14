@@ -1,8 +1,9 @@
 // Tipos gerados para o banco de dados Supabase
-// Schema: hub
+// Schema: Hub_Flex
 
 export type AccessLevel = 'editor' | 'viewer' | 'locked';
 export type UserRole = 'admin' | 'user';
+export type AppTier = 'primary' | 'secondary';
 
 export interface Profile {
   id: string;
@@ -22,6 +23,7 @@ export interface Application {
   port: number;
   base_url: string;
   is_active: boolean;
+  tier: AppTier;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -36,7 +38,7 @@ export interface Permission {
   updated_at: string;
 }
 
-// Tipo para app com permissão do usuário
+// Tipo para app com permissão do usuário (retornado pela RPC)
 export interface UserApplication {
   id: string;
   name: string;
@@ -45,34 +47,43 @@ export interface UserApplication {
   color: string;
   port: number;
   base_url: string;
+  tier: AppTier;
   display_order: number;
   access_level: AccessLevel;
 }
 
 // Tipos para o Supabase Client
 export interface Database {
-  hub: {
+  Hub_Flex: {
     Tables: {
-      profiles: {
+      hub_profiles: {
         Row: Profile;
         Insert: Omit<Profile, 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Profile, 'id' | 'created_at' | 'updated_at'>>;
       };
-      applications: {
+      hub_applications: {
         Row: Application;
         Insert: Omit<Application, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Application, 'id' | 'created_at' | 'updated_at'>>;
       };
-      permissions: {
+      hub_permissions: {
         Row: Permission;
         Insert: Omit<Permission, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Permission, 'id' | 'created_at' | 'updated_at'>>;
       };
     };
     Functions: {
-      get_user_applications: {
+      hub_get_user_applications: {
         Args: Record<string, never>;
         Returns: UserApplication[];
+      };
+      hub_get_all_profiles: {
+        Args: Record<string, never>;
+        Returns: Profile[];
+      };
+      hub_get_all_permissions: {
+        Args: Record<string, never>;
+        Returns: Permission[];
       };
     };
   };

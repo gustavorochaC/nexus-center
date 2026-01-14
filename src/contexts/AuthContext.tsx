@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
-import type { Profile, UserRole } from '@/types/database';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase';
+import type { Profile } from '@/types/database';
 
 interface AuthContextType {
   user: User | null;
@@ -13,29 +13,55 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateEmail: (newEmail: string) => Promise<{ error: Error | null }>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Configurações de retry para busca de perfil
+const RETRY_CONFIG = {
+  maxAttempts: 5,
+  initialDelayMs: 200,
+  maxDelayMs: 2000,
+  backoffMultiplier: 2,
+};
+
+// Helper para delay com Promise
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Ref para rastrear se é um novo registro (para aplicar retry)
+  const isNewSignUpRef = useRef(false);
 
   const isAdmin = profile?.role === 'admin';
 
-  // Buscar perfil do usuário
-  const fetchProfile = async (userId: string) => {
+  // Buscar perfil do usuário (tentativa única)
+  const fetchProfileOnce = useCallback(async (userId: string): Promise<Profile | null> => {
+    if (!isSupabaseAvailable) {
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
-        .schema('hub')
-        .from('profiles')
+        .schema('Hub_Flex')
+        .from('hub_profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
       if (error) {
+        // PGRST116 = "JSON object requested, multiple (or no) rows returned"
+        // Isso significa que o perfil ainda não foi criado pelo trigger
+        if (error.code === 'PGRST116') {
+          console.log('Auth: perfil ainda não existe (aguardando trigger)');
+          return null;
+        }
         console.error('Erro ao buscar perfil:', error);
         return null;
       }
@@ -45,18 +71,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Erro ao buscar perfil:', error);
       return null;
     }
-  };
+  }, []);
+
+  // Buscar perfil com retry (para após registro)
+  const fetchProfileWithRetry = useCallback(async (userId: string): Promise<Profile | null> => {
+    let currentDelay = RETRY_CONFIG.initialDelayMs;
+    
+    for (let attempt = 1; attempt <= RETRY_CONFIG.maxAttempts; attempt++) {
+      console.log(`Auth: tentativa ${attempt}/${RETRY_CONFIG.maxAttempts} de buscar perfil...`);
+      
+      const profileData = await fetchProfileOnce(userId);
+      
+      if (profileData) {
+        console.log(`Auth: perfil encontrado na tentativa ${attempt}`);
+        return profileData;
+      }
+      
+      // Se não é a última tentativa, aguardar antes de tentar novamente
+      if (attempt < RETRY_CONFIG.maxAttempts) {
+        console.log(`Auth: aguardando ${currentDelay}ms antes da próxima tentativa...`);
+        await delay(currentDelay);
+        currentDelay = Math.min(
+          currentDelay * RETRY_CONFIG.backoffMultiplier, 
+          RETRY_CONFIG.maxDelayMs
+        );
+      }
+    }
+    
+    console.warn('Auth: não foi possível obter o perfil após todas as tentativas');
+    return null;
+  }, [fetchProfileOnce]);
+
+  // Buscar perfil (decide se usa retry ou não)
+  const fetchProfile = useCallback(async (userId: string, forceRetry = false): Promise<Profile | null> => {
+    const shouldRetry = forceRetry || isNewSignUpRef.current;
+    
+    if (shouldRetry) {
+      console.log('Auth: buscando perfil com retry (novo registro detectado)');
+      const result = await fetchProfileWithRetry(userId);
+      isNewSignUpRef.current = false; // Reset após busca
+      return result;
+    }
+    
+    return fetchProfileOnce(userId);
+  }, [fetchProfileOnce, fetchProfileWithRetry]);
 
   // Atualizar perfil
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
-      const profileData = await fetchProfile(user.id);
+      const profileData = await fetchProfile(user.id, true);
       setProfile(profileData);
     }
-  };
+  }, [user, fetchProfile]);
 
   // Login
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
+    if (!isSupabaseAvailable) {
+      // Sem Supabase, não faz nada mas retorna sucesso para não quebrar a UI
+      return { error: null };
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -71,11 +145,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
   // Registro
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+    if (!isSupabaseAvailable) {
+      // Sem Supabase, não faz nada mas retorna sucesso para não quebrar a UI
+      return { error: null };
+    }
+
     try {
+      // Marcar que é um novo registro para ativar retry na busca de perfil
+      isNewSignUpRef.current = true;
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -87,6 +169,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
+        isNewSignUpRef.current = false; // Reset em caso de erro
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      isNewSignUpRef.current = false; // Reset em caso de erro
+      return { error: error as Error };
+    }
+  }, []);
+
+  // Logout
+  const signOut = useCallback(async () => {
+    if (isSupabaseAvailable) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+  }, []);
+
+  // Atualizar email
+  const updateEmail = useCallback(async (newEmail: string) => {
+    if (!isSupabaseAvailable) {
+      return { error: null };
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (error) {
         return { error };
       }
 
@@ -94,18 +209,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
-  // Logout
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-  };
+  // Atualizar senha
+  const updatePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    if (!isSupabaseAvailable) {
+      return { error: null };
+    }
+
+    try {
+      // Verificar senha atual fazendo login
+      if (user?.email) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+
+        if (signInError) {
+          return { error: new Error('Senha atual incorreta') };
+        }
+      }
+
+      // Atualizar senha
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, [user?.email]);
 
   // Inicializar e escutar mudanças de autenticação
   useEffect(() => {
+    // Se Supabase não estiver disponível, apenas finalizar loading
+    if (!isSupabaseAvailable) {
+      setIsLoading(false);
+      return;
+    }
+
     // Buscar sessão inicial
     const initializeAuth = async () => {
       console.log('Auth: iniciando inicialização...');
@@ -156,7 +303,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          const profileData = await fetchProfile(newSession.user.id);
+          // Se é um SIGNED_IN após registro, usar retry
+          // O evento SIGNED_UP indica que o usuário acabou de se registrar
+          const isSignUp = event === 'SIGNED_UP' || isNewSignUpRef.current;
+          
+          if (isSignUp) {
+            console.log('Auth: novo registro detectado, usando retry para buscar perfil');
+            // Pequeno delay inicial para dar tempo ao trigger
+            await delay(300);
+          }
+          
+          const profileData = await fetchProfile(newSession.user.id, isSignUp);
           setProfile(profileData);
         } else {
           setProfile(null);
@@ -181,6 +338,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     refreshProfile,
+    updateEmail,
+    updatePassword,
   };
 
   return (

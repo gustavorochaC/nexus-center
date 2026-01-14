@@ -1,11 +1,15 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import type { Permission, AccessLevel, Profile } from '@/types/database';
 
 // Buscar permissões de um usuário
 export async function getUserPermissions(userId: string): Promise<Permission[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .select('*')
     .eq('user_id', userId);
 
@@ -19,9 +23,13 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
 
 // Buscar todas as permissões (admin)
 export async function getAllPermissions(): Promise<Permission[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .select('*');
 
   if (error) {
@@ -34,9 +42,13 @@ export async function getAllPermissions(): Promise<Permission[]> {
 
 // Buscar permissões de uma aplicação específica
 export async function getApplicationPermissions(applicationId: string): Promise<Permission[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .select('*')
     .eq('application_id', applicationId);
 
@@ -54,9 +66,13 @@ export async function upsertPermission(
   applicationId: string,
   accessLevel: AccessLevel
 ): Promise<Permission> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .upsert(
       {
         user_id: userId,
@@ -80,9 +96,13 @@ export async function upsertPermission(
 
 // Remover permissão (volta para locked)
 export async function removePermission(userId: string, applicationId: string): Promise<void> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .delete()
     .eq('user_id', userId)
     .eq('application_id', applicationId);
@@ -95,9 +115,13 @@ export async function removePermission(userId: string, applicationId: string): P
 
 // Buscar todos os perfis (admin)
 export async function getAllProfiles(): Promise<Profile[]> {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('profiles')
+    .schema('Hub_Flex')
+    .from('hub_profiles')
     .select('*')
     .order('full_name');
 
@@ -111,9 +135,13 @@ export async function getAllProfiles(): Promise<Profile[]> {
 
 // Atualizar role do usuário (admin/user)
 export async function updateUserRole(userId: string, role: 'admin' | 'user'): Promise<Profile> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('profiles')
+    .schema('Hub_Flex')
+    .from('hub_profiles')
     .update({ role })
     .eq('id', userId)
     .select()
@@ -129,12 +157,16 @@ export async function updateUserRole(userId: string, role: 'admin' | 'user'): Pr
 
 // Buscar permissões detalhadas de um usuário com info das aplicações
 export async function getUserPermissionsWithApps(userId: string) {
+  if (!isSupabaseAvailable) {
+    return [];
+  }
+
   const { data, error } = await supabase
-    .schema('hub')
-    .from('permissions')
+    .schema('Hub_Flex')
+    .from('hub_permissions')
     .select(`
       *,
-      application:applications(*)
+      application:hub_applications(*)
     `)
     .eq('user_id', userId);
 
