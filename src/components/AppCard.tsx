@@ -1,4 +1,4 @@
-import { Lock, OpenInNew } from "@mui/icons-material";
+import { Lock, OpenInNew, Block } from "@mui/icons-material";
 import * as MuiIcons from "@mui/icons-material";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +8,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { UserApplication } from "@/types/database";
+import { useToast } from "@/hooks/use-toast";
+import type { UserApplication, UserAppWithPermission, AccessLevel } from "@/types/database";
+
+// Aceita ambos os tipos de app (legacy e novo com grupos)
+type AppData = UserApplication | UserAppWithPermission;
 
 interface AppCardProps {
-  app: UserApplication;
+  app: AppData;
 }
 
 // Helper para pegar o ícone dinamicamente do Material UI
-function getIcon(iconName: string) {
-  // Mapping for legacy Lucide names to MUI
+function getIcon(iconName: string | undefined) {
+  if (!iconName) return MuiIcons.Extension;
+
+  // Mapping for common names to MUI
   const mapping: Record<string, string> = {
     Truck: "LocalShipping",
     BarChart3: "BarChart",
@@ -26,36 +32,91 @@ function getIcon(iconName: string) {
     LayoutGrid: "GridView",
     Shield: "Security",
   };
-  
+
   const muiName = mapping[iconName] || iconName;
   const IconComponent = (MuiIcons as any)[muiName];
   return IconComponent || MuiIcons.Extension;
 }
 
-export function AppCard({ app }: AppCardProps) {
-  const { id, name, description, icon, color, access_level, base_url, port } = app;
+// Helper para normalizar dados do app (legacy vs novo formato)
+function normalizeApp(app: AppData) {
+  // Checar se é UserAppWithPermission (tem app_id)
+  if ('app_id' in app) {
+    return {
+      id: app.app_id,
+      name: app.app_name,
+      url: app.app_url,
+      icon_name: app.app_icon,
+      access_level: app.access_level as AccessLevel,
+      is_active: app.app_is_active,
+      category: app.app_category,
+      description: app.app_description,
+      color: app.app_color,
+    };
+  }
+  // Legacy UserApplication
+  return {
+    id: app.id,
+    name: app.name,
+    url: app.url,
+    icon_name: app.icon_name,
+    access_level: app.access_level as AccessLevel,
+    is_active: app.is_active,
+    category: app.category,
+    description: undefined,
+    color: undefined,
+  };
+}
+
+export function AppCard({ app: rawApp }: AppCardProps) {
+  const app = normalizeApp(rawApp);
+  const { name, icon_name, url, access_level, is_active } = app;
+  const { toast } = useToast();
 
   const isLocked = access_level === "locked";
   const isEditor = access_level === "editor";
   const isViewer = access_level === "viewer";
+  const isInactive = !is_active;
 
-  const Icon = getIcon(icon);
+  const Icon = getIcon(icon_name);
 
   const handleAccess = () => {
-    const url = `${base_url}:${port}`;
+    // Bloquear se app desativado
+    if (isInactive) {
+      toast({
+        variant: "destructive",
+        title: "Aplicação desativada",
+        description: "Esta aplicação está temporariamente indisponível.",
+      });
+      return;
+    }
+
+    // Bloquear se sem acesso
+    if (isLocked) {
+      toast({
+        variant: "destructive",
+        title: "Sem permissão",
+        description: "Você não tem acesso a esta aplicação. Contate o administrador.",
+      });
+      return;
+    }
+
     window.open(url, '_blank');
   };
+
+  // Definir cor padrão baseado em categoria ou fallback
+  const defaultColor = app.color || "#6366f1";
 
   return (
     <div
       className={cn(
         "group relative flex flex-col rounded-2xl border bg-card p-6 transition-all duration-300",
-        isLocked
+        isLocked || isInactive
           ? "opacity-60 cursor-not-allowed border-border"
           : "cursor-pointer border-border/50 hover:border-transparent hover:shadow-xl hover:-translate-y-1"
       )}
       style={
-        !isLocked
+        !isLocked && !isInactive
           ? {
             background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)) 100%)',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
@@ -64,11 +125,11 @@ export function AppCard({ app }: AppCardProps) {
       }
     >
       {/* Gradient border effect on hover */}
-      {!isLocked && (
+      {!isLocked && !isInactive && (
         <div
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-sm"
           style={{
-            background: `linear-gradient(135deg, ${color}40, ${color}20)`,
+            background: `linear-gradient(135deg, ${defaultColor}40, ${defaultColor}20)`,
             transform: 'scale(1.02)',
           }}
         />
@@ -79,24 +140,29 @@ export function AppCard({ app }: AppCardProps) {
         <div
           className={cn(
             "flex h-16 w-16 items-center justify-center rounded-2xl transition-all duration-300",
-            isLocked ? "bg-muted/30" : "group-hover:scale-110 shadow-lg"
+            isLocked || isInactive ? "bg-muted/30" : "group-hover:scale-110 shadow-lg"
           )}
           style={
-            !isLocked
+            !isLocked && !isInactive
               ? {
-                background: `linear-gradient(135deg, ${color}20, ${color}40)`,
+                background: `linear-gradient(135deg, ${defaultColor}20, ${defaultColor}40)`,
               }
               : undefined
           }
         >
           <Icon
             className="h-8 w-8 transition-transform duration-300 group-hover:scale-110"
-            style={{ color: isLocked ? "hsl(var(--muted-foreground))" : color }}
+            style={{ color: (isLocked || isInactive) ? "hsl(var(--muted-foreground))" : defaultColor }}
           />
         </div>
         {isLocked && (
           <div className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-muted border-2 border-card shadow-md">
             <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+        )}
+        {isInactive && (
+          <div className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-destructive/20 border-2 border-card shadow-md">
+            <Block className="h-3.5 w-3.5 text-destructive" />
           </div>
         )}
       </div>
@@ -107,35 +173,63 @@ export function AppCard({ app }: AppCardProps) {
           <h3 className="text-xl font-semibold text-card-foreground tracking-tight">
             {name}
           </h3>
-          {isEditor && (
+          {isInactive && (
+            <Badge
+              variant="destructive"
+              className="text-xs px-2.5 py-0.5"
+            >
+              Desativado
+            </Badge>
+          )}
+          {isLocked && (
+            <Badge
+              variant="secondary"
+              className="text-xs px-2.5 py-0.5 bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/30"
+            >
+              SEM PERMISSÃO
+            </Badge>
+          )}
+          {!isInactive && !isLocked && isEditor && (
             <Badge
               variant="default"
               className="text-xs px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
             >
-              Pode Editar
+              Acesso Total
             </Badge>
           )}
-          {isViewer && (
+          {!isInactive && !isLocked && isViewer && (
             <Badge
               variant="secondary"
               className="text-xs px-2.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
             >
-              Apenas Visualização
+              Somente Leitura
             </Badge>
           )}
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          {description}
+          {app.description || app.category || "Aplicação do sistema"}
         </p>
       </div>
 
       {/* Action Button */}
-      {isLocked ? (
+      {isInactive ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" disabled className="w-full">
+              <Block className="mr-2 h-4 w-4" />
+              Desativado
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Esta aplicação está temporariamente indisponível</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : isLocked ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="outline" disabled className="w-full">
               <Lock className="mr-2 h-4 w-4" />
-              Bloqueado
+              Sem Acesso
             </Button>
           </TooltipTrigger>
           <TooltipContent>

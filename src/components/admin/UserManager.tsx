@@ -56,7 +56,7 @@ export function UserManager() {
       await updateUserRole(changingUser.id, newRole);
       toast({
         title: "Permissão atualizada",
-        description: `${changingUser.full_name} agora é ${newRole === "admin" ? "administrador" : "usuário comum"}.`,
+        description: `${changingUser.email} agora é ${newRole === "admin" ? "administrador" : "usuário comum"}.`,
       });
       setIsDialogOpen(false);
       setChangingUser(null);
@@ -70,12 +70,12 @@ export function UserManager() {
     }
   };
 
-  const getInitials = (name: string): string => {
-    const parts = name.split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  const getInitials = (email: string): string => {
+    const username = email.split('@')[0];
+    if (username.length >= 2) {
+      return username.substring(0, 2).toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    return username.substring(0, 1).toUpperCase();
   };
 
   if (isLoading) {
@@ -166,8 +166,8 @@ export function UserManager() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {changingUser?.role === "admin"
-                ? `${changingUser?.full_name} perderá acesso ao painel administrativo e não poderá mais gerenciar usuários, aplicações e permissões.`
-                : `${changingUser?.full_name} terá acesso total ao painel administrativo, podendo gerenciar usuários, aplicações e permissões.`}
+                ? `${changingUser?.email} perderá acesso ao painel administrativo e não poderá mais gerenciar usuários, aplicações e permissões.`
+                : `${changingUser?.email} terá acesso total ao painel administrativo, podendo gerenciar usuários, aplicações e permissões.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -187,7 +187,7 @@ interface UserCardProps {
   profile: Profile;
   isCurrentUser: boolean;
   onToggleRole: () => void;
-  getInitials: (name: string) => string;
+  getInitials: (email: string) => string;
 }
 
 function UserCard({ profile, isCurrentUser, onToggleRole, getInitials }: UserCardProps) {
@@ -196,12 +196,12 @@ function UserCard({ profile, isCurrentUser, onToggleRole, getInitials }: UserCar
       <div className="flex items-center gap-4">
         <Avatar>
           <AvatarFallback className="bg-primary text-primary-foreground">
-            {getInitials(profile.full_name)}
+            {getInitials(profile.email)}
           </AvatarFallback>
         </Avatar>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-medium">{profile.full_name}</span>
+            <span className="font-medium">{profile.email}</span>
             {isCurrentUser && (
               <Badge variant="outline" className="text-xs">
                 Você

@@ -56,9 +56,11 @@ interface SettingsProps {
 
 export default function Settings({ onClose }: SettingsProps) {
   const { settings, updateSettings } = useUserSettings();
-  const { user, updateEmail, updatePassword, isAdmin } = useAuth();
+  const { user, profile, updateEmail, updatePassword, isAdmin } = useAuth();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
-  const [displayName, setDisplayName] = useState(settings.displayName);
+  // Inicializar displayName com o nome do perfil se não houver um salvo
+  const initialDisplayName = settings.displayName || profile?.full_name || user?.email?.split('@')[0] || '';
+  const [displayName, setDisplayName] = useState(initialDisplayName);
   const [language, setLanguage] = useState(settings.language);
   const [timezone, setTimezone] = useState(settings.timezone);
   const [avatarUrl, setAvatarUrl] = useState(settings.avatarUrl);
@@ -70,16 +72,18 @@ export default function Settings({ onClose }: SettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-  
+
   // Estados para classificação de apps
   const [apps, setApps] = useState<Application[]>([]);
   const [primaryAppIds, setPrimaryAppIds] = useState<Set<string>>(new Set());
   const [isLoadingApps, setIsLoadingApps] = useState(false);
 
-  // Atualizar campos quando as configurações mudarem
+  // Atualizar campos quando as configurações ou perfil mudarem
   useEffect(() => {
-    if (displayName !== settings.displayName) {
-      setDisplayName(settings.displayName);
+    // Atualizar displayName apenas se não houver mudanças locais não salvas
+    const currentDisplayName = settings.displayName || profile?.full_name || user?.email?.split('@')[0] || '';
+    if (displayName !== currentDisplayName && displayName === settings.displayName) {
+      setDisplayName(currentDisplayName);
     }
     if (language !== settings.language) {
       setLanguage(settings.language);
@@ -90,7 +94,7 @@ export default function Settings({ onClose }: SettingsProps) {
     if (avatarUrl !== settings.avatarUrl) {
       setAvatarUrl(settings.avatarUrl);
     }
-  }, [settings, displayName, language, timezone, avatarUrl]);
+  }, [settings, profile, user, displayName, language, timezone, avatarUrl]);
 
   // Atualizar email quando user mudar
   useEffect(() => {
@@ -190,7 +194,7 @@ export default function Settings({ onClose }: SettingsProps) {
       Building: "Business",
       Home: "Home",
     };
-    
+
     const muiName = mapping[iconName] || iconName;
     const IconComponent = (MuiIcons as any)[muiName];
     return IconComponent || MuiIcons.Extension;
@@ -419,7 +423,7 @@ export default function Settings({ onClose }: SettingsProps) {
                   <span>Voltar ao Hub</span>
                 </Button>
               </div>
-              
+
               {/* Título */}
               <h2 id="settings-title" className="text-2xl font-bold text-foreground">
                 Configurações
@@ -441,22 +445,20 @@ export default function Settings({ onClose }: SettingsProps) {
                       <div className="space-y-1">
                         <button
                           onClick={() => setActiveSection('account')}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            activeSection === 'account'
-                              ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'account'
+                            ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
+                            }`}
                         >
                           <ManageAccounts className="h-5 w-5" />
                           <span>Conta</span>
                         </button>
                         <button
                           onClick={() => setActiveSection('preferences')}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            activeSection === 'preferences'
-                              ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'preferences'
+                            ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
+                            }`}
                         >
                           <SettingsIcon className="h-5 w-5" />
                           <span>Preferências</span>
@@ -464,38 +466,38 @@ export default function Settings({ onClose }: SettingsProps) {
                       </div>
                     </div>
 
-                    {/* Seção Administrador */}
-                    <div>
-                      <div className="px-3 py-2 bg-muted rounded-lg mb-2">
-                        <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                          Administrador
-                        </h3>
-                      </div>
-                      <div className="space-y-1">
-                        <button
-                          onClick={() => setActiveSection('permissions')}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            activeSection === 'permissions'
+                    {/* Seção Administrador - Apenas para admins */}
+                    {isAdmin && (
+                      <div>
+                        <div className="px-3 py-2 bg-muted rounded-lg mb-2">
+                          <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+                            Administrador
+                          </h3>
+                        </div>
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => setActiveSection('permissions')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'permissions'
                               ? 'bg-primary text-primary-foreground shadow-lg scale-105'
                               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                          }`}
-                        >
-                          <Security className="h-5 w-5" />
-                          <span>Permissões</span>
-                        </button>
-                        <button
-                          onClick={() => setActiveSection('apps')}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            activeSection === 'apps'
+                              }`}
+                          >
+                            <Security className="h-5 w-5" />
+                            <span>Permissões</span>
+                          </button>
+                          <button
+                            onClick={() => setActiveSection('apps')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'apps'
                               ? 'bg-primary text-primary-foreground shadow-lg scale-105'
                               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                          }`}
-                        >
-                          <Apps className="h-5 w-5" />
-                          <span>Apps</span>
-                        </button>
+                              }`}
+                          >
+                            <Apps className="h-5 w-5" />
+                            <span>Apps</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </nav>
                 </div>
 
@@ -504,218 +506,218 @@ export default function Settings({ onClose }: SettingsProps) {
                   <div className="relative">
                     {activeSection === 'account' && (
                       <div className="space-y-6 animate-in fade-in-0 duration-200">
-                      {/* Foto de Perfil Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-4">
-                          <div>
-                            <Label className="text-base font-semibold">Foto de Perfil</Label>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Adicione uma foto para personalizar seu perfil
-                            </p>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row items-start gap-6">
-                            <Avatar className="h-24 w-24 ring-4 ring-white/20">
-                              {avatarUrl ? (
-                                <AvatarImage src={avatarUrl} alt="Foto de perfil" />
-                              ) : null}
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-2xl font-semibold">
-                                {getInitials(displayName || settings.displayName)}
-                              </AvatarFallback>
-                            </Avatar>
-
-                            <div className="flex-1 space-y-3 w-full">
-                              <div
-                                onDragEnter={handleDragEnter}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`
-                                  border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all duration-200
-                                  ${isDragging 
-                                    ? 'border-primary bg-primary/10 scale-105' 
-                                    : 'border-white/20 hover:border-primary/50 hover:bg-white/5'
-                                  }
-                                `}
-                              >
-                                <input
-                                  ref={fileInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleFileInputChange}
-                                  className="hidden"
-                                />
-                                <div className="flex flex-col items-center justify-center gap-2 text-center">
-                                  <CloudUpload className="h-8 w-8 text-muted-foreground" />
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      {isDragging ? 'Solte a imagem aqui' : 'Arraste uma imagem ou clique para selecionar'}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      PNG, JPG ou GIF até 5MB
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {avatarUrl && (
-                                <Button
-                                  variant="outline"
-                                  onClick={handleRemovePhoto}
-                                  className="w-full sm:w-auto"
-                                >
-                                  <Delete className="h-4 w-4 mr-2" />
-                                  Remover Foto
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Nome de Usuário Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-3">
-                          <Label htmlFor="displayName" className="text-base font-semibold">Nome de Usuário</Label>
-                          <Input
-                            id="displayName"
-                            placeholder="Digite seu nome de usuário"
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            maxLength={50}
-                            className="bg-background border-border"
-                          />
-                          <p className="text-sm text-muted-foreground">
-                            Este nome será exibido no cabeçalho da aplicação
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      {/* Email Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-3">
-                          <Label htmlFor="email" className="text-base font-semibold">Email</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="Digite seu email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="bg-background border-border"
-                          />
-                          <p className="text-sm text-muted-foreground">
-                            Seu endereço de email para login
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      {/* Alterar Senha Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-4">
-                          <div>
-                            <Label className="text-base font-semibold">Alterar Senha</Label>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Deixe em branco se não desejar alterar a senha
-                            </p>
-                          </div>
-
-                          <div className="space-y-3">
+                        {/* Foto de Perfil Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-4">
                             <div>
-                              <Label htmlFor="currentPassword">Senha Atual</Label>
-                              <Input
-                                id="currentPassword"
-                                type="password"
-                                placeholder="Digite sua senha atual"
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                className="bg-white/5 border-white/20 mt-2"
-                              />
-                            </div>
-
-                            <div>
-                              <Label htmlFor="newPassword">Nova Senha</Label>
-                              <Input
-                                id="newPassword"
-                                type="password"
-                                placeholder="Digite a nova senha"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="bg-white/5 border-white/20 mt-2"
-                              />
+                              <Label className="text-base font-semibold">Foto de Perfil</Label>
                               <p className="text-sm text-muted-foreground mt-1">
-                                Mínimo de 6 caracteres
+                                Adicione uma foto para personalizar seu perfil
                               </p>
                             </div>
 
-                            <div>
-                              <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-                              <Input
-                                id="confirmPassword"
-                                type="password"
-                                placeholder="Confirme a nova senha"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="bg-white/5 border-white/20 mt-2"
-                              />
-                              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                                <p className="text-sm text-destructive mt-1">
-                                  As senhas não coincidem
-                                </p>
-                              )}
+                            <div className="flex flex-col sm:flex-row items-start gap-6">
+                              <Avatar className="h-24 w-24 ring-4 ring-white/20">
+                                {avatarUrl ? (
+                                  <AvatarImage src={avatarUrl} alt="Foto de perfil" />
+                                ) : null}
+                                <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-2xl font-semibold">
+                                  {getInitials(displayName || settings.displayName)}
+                                </AvatarFallback>
+                              </Avatar>
+
+                              <div className="flex-1 space-y-3 w-full">
+                                <div
+                                  onDragEnter={handleDragEnter}
+                                  onDragOver={handleDragOver}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={handleDrop}
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className={`
+                                  border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all duration-200
+                                  ${isDragging
+                                      ? 'border-primary bg-primary/10 scale-105'
+                                      : 'border-white/20 hover:border-primary/50 hover:bg-white/5'
+                                    }
+                                `}
+                                >
+                                  <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileInputChange}
+                                    className="hidden"
+                                  />
+                                  <div className="flex flex-col items-center justify-center gap-2 text-center">
+                                    <CloudUpload className="h-8 w-8 text-muted-foreground" />
+                                    <div>
+                                      <p className="text-sm font-medium">
+                                        {isDragging ? 'Solte a imagem aqui' : 'Arraste uma imagem ou clique para selecionar'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        PNG, JPG ou GIF até 5MB
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {avatarUrl && (
+                                  <Button
+                                    variant="outline"
+                                    onClick={handleRemovePhoto}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    <Delete className="h-4 w-4 mr-2" />
+                                    Remover Foto
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+
+                        {/* Nome de Usuário Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-3">
+                            <Label htmlFor="displayName" className="text-base font-semibold">Nome de Usuário</Label>
+                            <Input
+                              id="displayName"
+                              placeholder="Digite seu nome de usuário"
+                              value={displayName}
+                              onChange={(e) => setDisplayName(e.target.value)}
+                              maxLength={50}
+                              className="bg-background border-border"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                              Este nome será exibido no cabeçalho da aplicação
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Email Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-3">
+                            <Label htmlFor="email" className="text-base font-semibold">Email</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="Digite seu email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="bg-background border-border"
+                            />
+                            <p className="text-sm text-muted-foreground">
+                              Seu endereço de email para login
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        {/* Alterar Senha Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-4">
+                            <div>
+                              <Label className="text-base font-semibold">Alterar Senha</Label>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Deixe em branco se não desejar alterar a senha
+                              </p>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div>
+                                <Label htmlFor="currentPassword">Senha Atual</Label>
+                                <Input
+                                  id="currentPassword"
+                                  type="password"
+                                  placeholder="Digite sua senha atual"
+                                  value={currentPassword}
+                                  onChange={(e) => setCurrentPassword(e.target.value)}
+                                  className="bg-white/5 border-white/20 mt-2"
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor="newPassword">Nova Senha</Label>
+                                <Input
+                                  id="newPassword"
+                                  type="password"
+                                  placeholder="Digite a nova senha"
+                                  value={newPassword}
+                                  onChange={(e) => setNewPassword(e.target.value)}
+                                  className="bg-white/5 border-white/20 mt-2"
+                                />
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Mínimo de 6 caracteres
+                                </p>
+                              </div>
+
+                              <div>
+                                <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                                <Input
+                                  id="confirmPassword"
+                                  type="password"
+                                  placeholder="Confirme a nova senha"
+                                  value={confirmPassword}
+                                  onChange={(e) => setConfirmPassword(e.target.value)}
+                                  className="bg-white/5 border-white/20 mt-2"
+                                />
+                                {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    As senhas não coincidem
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
 
                     {activeSection === 'preferences' && (
                       <div className="space-y-6 animate-in fade-in-0 duration-200">
-                      {/* Idioma Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-3">
-                          <Label htmlFor="language" className="text-base font-semibold">Idioma</Label>
-                          <Select
-                            value={language}
-                            onValueChange={(value: 'pt-BR' | 'en-US' | 'es-ES') => setLanguage(value)}
-                          >
-                            <SelectTrigger id="language" className="bg-white/5 border-white/20">
-                              <SelectValue placeholder="Selecione um idioma" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {languages.map((lang) => (
-                                <SelectItem key={lang.value} value={lang.value}>
-                                  {lang.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </CardContent>
-                      </Card>
+                        {/* Idioma Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-3">
+                            <Label htmlFor="language" className="text-base font-semibold">Idioma</Label>
+                            <Select
+                              value={language}
+                              onValueChange={(value: 'pt-BR' | 'en-US' | 'es-ES') => setLanguage(value)}
+                            >
+                              <SelectTrigger id="language" className="bg-white/5 border-white/20">
+                                <SelectValue placeholder="Selecione um idioma" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {languages.map((lang) => (
+                                  <SelectItem key={lang.value} value={lang.value}>
+                                    {lang.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </CardContent>
+                        </Card>
 
-                      {/* Fuso Horário Card */}
-                      <Card className="rounded-xl bg-card border-border shadow-md">
-                        <CardContent className="p-6 space-y-3">
-                          <Label htmlFor="timezone" className="text-base font-semibold">Fuso Horário</Label>
-                          <Select value={timezone} onValueChange={setTimezone}>
-                            <SelectTrigger id="timezone" className="bg-white/5 border-white/20">
-                              <SelectValue placeholder="Selecione um fuso horário" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timezones.map((tz) => (
-                                <SelectItem key={tz.value} value={tz.value}>
-                                  {tz.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </CardContent>
-                      </Card>
+                        {/* Fuso Horário Card */}
+                        <Card className="rounded-xl bg-card border-border shadow-md">
+                          <CardContent className="p-6 space-y-3">
+                            <Label htmlFor="timezone" className="text-base font-semibold">Fuso Horário</Label>
+                            <Select value={timezone} onValueChange={setTimezone}>
+                              <SelectTrigger id="timezone" className="bg-white/5 border-white/20">
+                                <SelectValue placeholder="Selecione um fuso horário" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timezones.map((tz) => (
+                                  <SelectItem key={tz.value} value={tz.value}>
+                                    {tz.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
 
-                    {activeSection === 'permissions' && (
+                    {activeSection === 'permissions' && isAdmin && (
                       <div className="space-y-6 animate-in fade-in-0 duration-200">
                         <PermissionManager />
                       </div>
@@ -724,7 +726,7 @@ export default function Settings({ onClose }: SettingsProps) {
                     {activeSection === 'apps' && (
                       <div className="space-y-6 animate-in fade-in-0 duration-200">
                         <ApplicationManager />
-                        
+
                         {/* Card de Classificação de Apps */}
                         <Card className="rounded-xl bg-card border-border shadow-md">
                           <CardHeader>
@@ -807,13 +809,13 @@ export default function Settings({ onClose }: SettingsProps) {
               <Button variant="outline" onClick={handleCancel} className="min-h-[44px] min-w-[44px]">
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={!hasChanges}
-                className={`min-h-[44px] min-w-[44px] ${hasChanges 
-                  ? "bg-green-600 hover:bg-green-700 text-white" 
+                className={`min-h-[44px] min-w-[44px] ${hasChanges
+                  ? "bg-green-600 hover:bg-green-700 text-white"
                   : "bg-green-200 text-green-800 cursor-not-allowed"
-                }`}
+                  }`}
               >
                 Salvar Alterações
               </Button>

@@ -19,20 +19,10 @@ export default function AppViewer() {
   const iframeLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:21',message:'useEffect triggered',data:{id,isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const fetchApp = async () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:23',message:'fetchApp started',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       try {
         setIsLoading(true);
         setError(null);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:28',message:'Before getUserApplications',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         
         // Buscar aplicações e garantir delay mínimo de 1s
         const startTime = Date.now();
@@ -44,64 +34,35 @@ export default function AppViewer() {
           await new Promise<void>(resolve => setTimeout(() => resolve(), remainingDelay));
         }
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:35',message:'getUserApplications completed',data:{appsCount:apps?.length,elapsed,remainingDelay,foundAppId:apps?.find((a:any)=>a.id===id)?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
         const foundApp = apps.find((a) => a.id === id);
         
         if (!foundApp) {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:37',message:'App not found',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           setError("Aplicação não encontrada");
           setIsLoading(false);
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:39',message:'setIsLoading(false) called - not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           return;
         }
         
         if (foundApp.access_level === "locked") {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:43',message:'App locked',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           setError("Você não tem permissão para acessar esta aplicação");
           setIsLoading(false);
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:45',message:'setIsLoading(false) called - locked',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           return;
         }
         
         setApp(foundApp);
         setIsLoading(false);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:49',message:'setIsLoading(false) called - success',data:{appId:foundApp.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       } catch (err) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:51',message:'Error caught',data:{error:err instanceof Error?err.message:String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         console.error("Erro ao carregar aplicação:", err);
         setError("Não foi possível carregar a aplicação");
         setIsLoading(false);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:54',message:'setIsLoading(false) called - error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       }
     };
 
     if (id) {
       fetchApp();
-    } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:58',message:'No id provided',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
     }
   }, [id]);
 
-  const appUrl = app ? `${app.base_url}:${app.port}` : "";
+  const appUrl = app?.url || "";
 
   // Reset iframe loading quando o app muda
   useEffect(() => {
@@ -146,9 +107,6 @@ export default function AppViewer() {
     setIsFullscreen(!isFullscreen);
   };
 
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppViewer.tsx:107',message:'Render check',data:{isLoading,error:!!error,hasApp:!!app},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   // Loading state
   if (isLoading) {
     return (
@@ -201,10 +159,6 @@ export default function AppViewer() {
           <div className="h-6 w-px bg-border" />
           
           <div className="flex items-center gap-2">
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: app.color }}
-            />
             <span className="font-medium text-foreground">{app.name}</span>
             {app.access_level === "viewer" && (
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">

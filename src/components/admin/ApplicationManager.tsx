@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { Add, Edit, Delete, Loop, PowerSettingsNew, PowerOff } from "@mui/icons-material";
-import * as MuiIcons from "@mui/icons-material";
+import { Add, Edit, Delete, Loop } from "@mui/icons-material";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -34,66 +32,18 @@ import {
 } from "@/services/applications";
 import type { Application } from "@/types/database";
 
-// Helper para pegar o ícone dinamicamente do Material UI
-function getIcon(iconName: string) {
-  const mapping: Record<string, string> = {
-    Truck: "LocalShipping",
-    BarChart3: "BarChart",
-    Target: "TrackChanges",
-    Users: "People",
-    Settings: "Settings",
-    LayoutGrid: "GridView",
-    Shield: "Security",
-    Image: "Image",
-    QrCode: "QrCode",
-    FileSearch: "FindInPage",
-    Car: "DirectionsCar",
-    Box: "Inventory2",
-    Database: "Storage",
-    FileText: "Description",
-    Calendar: "CalendarToday",
-    Mail: "Mail",
-    Phone: "Phone",
-    Map: "Map",
-    ShoppingCart: "ShoppingCart",
-    CreditCard: "CreditCard",
-    Package: "Inventory",
-    Building: "Business",
-    Home: "Home",
-  };
-  
-  const muiName = mapping[iconName] || iconName;
-  const IconComponent = (MuiIcons as any)[muiName];
-  return IconComponent || MuiIcons.Extension;
-}
-
-// Lista de ícones disponíveis
-const availableIcons = [
-  "Image", "QrCode", "BarChart3", "FileSearch", "Car", "Box", "Database",
-  "Users", "Settings", "FileText", "Calendar", "Mail", "Phone", "Map",
-  "ShoppingCart", "CreditCard", "Package", "Truck", "Building", "Home"
-];
-
 interface ApplicationFormData {
   name: string;
-  description: string;
-  icon: string;
-  color: string;
-  port: number;
-  base_url: string;
-  is_active: boolean;
-  display_order: number;
+  url: string;
+  category: string;
+  is_public: boolean;
 }
 
 const initialFormData: ApplicationFormData = {
   name: "",
-  description: "",
-  icon: "Box",
-  color: "#6366f1",
-  port: 8080,
-  base_url: "http://192.168.1.220",
-  is_active: true,
-  display_order: 0,
+  url: "",
+  category: "Produção",
+  is_public: false,
 };
 
 export function ApplicationManager() {
@@ -132,20 +82,13 @@ export function ApplicationManager() {
       setEditingApp(app);
       setFormData({
         name: app.name,
-        description: app.description || "",
-        icon: app.icon,
-        color: app.color,
-        port: app.port,
-        base_url: app.base_url,
-        is_active: app.is_active,
-        display_order: app.display_order,
+        url: app.url,
+        category: app.category,
+        is_public: app.is_public,
       });
     } else {
       setEditingApp(null);
-      setFormData({
-        ...initialFormData,
-        display_order: apps.length + 1,
-      });
+      setFormData(initialFormData);
     }
     setIsDialogOpen(true);
   };
@@ -157,11 +100,11 @@ export function ApplicationManager() {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.port) {
+    if (!formData.name || !formData.url) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Nome e porta são obrigatórios.",
+        description: "Nome e URL são obrigatórios.",
       });
       return;
     }
@@ -189,7 +132,7 @@ export function ApplicationManager() {
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Não foi possível salvar a aplicação. Verifique se a porta já não está em uso.",
+        description: "Não foi possível salvar a aplicação.",
       });
     } finally {
       setIsSaving(false);
@@ -213,23 +156,6 @@ export function ApplicationManager() {
         variant: "destructive",
         title: "Erro ao remover",
         description: "Não foi possível remover a aplicação.",
-      });
-    }
-  };
-
-  const handleToggleActive = async (app: Application) => {
-    try {
-      await updateApplication(app.id, { is_active: !app.is_active });
-      toast({
-        title: app.is_active ? "Aplicação desativada" : "Aplicação ativada",
-        description: `${app.name} foi ${app.is_active ? "desativada" : "ativada"}.`,
-      });
-      fetchApps();
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível alterar o status.",
       });
     }
   };
@@ -260,46 +186,27 @@ export function ApplicationManager() {
         <CardContent>
           <div className="space-y-4">
             {apps.map((app) => {
-              const Icon = getIcon(app.icon);
               return (
                 <div
                   key={app.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: `${app.color}20` }}
-                    >
-                      <Icon className="h-5 w-5" style={{ color: app.color }} />
-                    </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{app.name}</span>
-                        {!app.is_active && (
-                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
-                            Inativo
+                        {app.is_public && (
+                          <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
+                            Público
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Porta: {app.port} • {app.base_url}:{app.port}
+                        {app.category} • {app.url}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleToggleActive(app)}
-                      title={app.is_active ? "Desativar" : "Ativar"}
-                    >
-                      {app.is_active ? (
-                        <PowerSettingsNew className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <PowerOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -357,92 +264,35 @@ export function ApplicationManager() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Descrição breve da aplicação"
-                rows={2}
+              <Label htmlFor="url">URL Completa *</Label>
+              <Input
+                id="url"
+                value={formData.url}
+                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                placeholder="https://exemplo.com ou http://192.168.1.220:8080"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="port">Porta *</Label>
-                <Input
-                  id="port"
-                  type="number"
-                  value={formData.port}
-                  onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) || 0 })}
-                  placeholder="8080"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="base_url">URL Base</Label>
-                <Input
-                  id="base_url"
-                  value={formData.base_url}
-                  onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
-                  placeholder="http://192.168.1.220"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Ícone</Label>
-                <div className="flex flex-wrap gap-2 p-2 border rounded-lg max-h-24 overflow-y-auto">
-                  {availableIcons.map((iconName) => {
-                    const IconOption = getIcon(iconName);
-                    return (
-                      <button
-                        key={iconName}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, icon: iconName })}
-                        className={`p-2 rounded hover:bg-accent ${
-                          formData.icon === iconName ? "bg-primary text-primary-foreground" : ""
-                        }`}
-                        title={iconName}
-                      >
-                        <IconOption className="h-4 w-4" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="color">Cor</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="color"
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-12 h-10 p-1 cursor-pointer"
-                  />
-                  <Input
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    placeholder="#6366f1"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Categoria</Label>
+              <Input
+                id="category"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                placeholder="Produção, Desenvolvimento, etc."
+              />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Ativo</Label>
+                <Label>Aplicação Pública</Label>
                 <p className="text-sm text-muted-foreground">
-                  Aplicação visível para usuários
+                  Visível para todos os usuários sem necessidade de permissão
                 </p>
               </div>
               <Switch
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                checked={formData.is_public}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
               />
             </div>
           </div>

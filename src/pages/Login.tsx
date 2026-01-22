@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { Visibility, VisibilityOff, Loop } from "@mui/icons-material";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { signIn, user } = useAuth();
   
@@ -19,11 +20,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Mostrar toast se veio por reason=inactive
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'inactive') {
+      toast({
+        variant: "destructive",
+        title: "Usuário desativado",
+        description: "Sua conta está inativa. Entre em contato com o administrador.",
+      });
+      // Limpar o query param
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, toast]);
+
   // Redirecionar se já estiver logado
-  if (user) {
-    const from = location.state?.from?.pathname || "/dashboard";
-    navigate(from, { replace: true });
-  }
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    }
+  }, [user, location, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

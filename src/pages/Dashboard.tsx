@@ -4,81 +4,56 @@ import { AppCard } from "@/components/AppCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettingsModal } from "@/contexts/SettingsModalContext";
 import Settings from "@/pages/Settings";
-import type { UserApplication } from "@/types/database";
+import { getUserAppsWithPermissions } from "@/services/permissions";
+import { useEffect, useState } from "react";
+import { Loop } from "@mui/icons-material";
+import type { UserAppWithPermission } from "@/types/database";
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user, isLoading: authLoading } = useAuth();
   const { isOpen, closeSettings } = useSettingsModal();
+  const [apps, setApps] = useState<UserAppWithPermission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Primary Applications (High Priority)
-  const primaryApps: UserApplication[] = [
-    {
-      id: "5",
-      name: "SCV",
-      description: "Sistema de Controle Veicular - Gestão completa da frota",
-      icon: "Truck",
-      color: "#ef4444",
-      port: 8084,
-      base_url: "http://192.168.1.220",
-      tier: "primary",
-      display_order: 1,
-      access_level: "editor",
-    },
-    {
-      id: "3",
-      name: "SGI",
-      description: "Sistema de Gestão de Indicadores - Dashboards e métricas",
-      icon: "BarChart3",
-      color: "#10b981",
-      port: 8082,
-      base_url: "http://192.168.1.220",
-      tier: "primary",
-      display_order: 2,
-      access_level: "editor",
-    },
-  ];
+  useEffect(() => {
+    // Aguardar auth carregar
+    if (authLoading) {
+      return;
+    }
 
-  // Secondary Applications
-  const secondaryApps: UserApplication[] = [
-    {
-      id: "1",
-      name: "Metas",
-      description: "Gestão de metas e objetivos",
-      icon: "Target",
-      color: "#3b82f6",
-      port: 8080,
-      base_url: "http://192.168.1.220",
-      tier: "secondary",
-      display_order: 1,
-      access_level: "editor",
-    },
-    {
-      id: "2",
-      name: "Gerador de QrCode",
-      description: "Ferramenta utilitária de QR Codes",
-      icon: "QrCode",
-      color: "#8b5cf6",
-      port: 8081,
-      base_url: "http://192.168.1.220",
-      tier: "secondary",
-      display_order: 2,
-      access_level: "editor",
-    },
-    {
-      id: "4",
-      name: "Análise de Editais",
-      description: "Gestão e análise de documentos",
-      icon: "FileSearch",
-      color: "#f59e0b",
-      port: 8083,
-      base_url: "http://192.168.1.220",
-      tier: "secondary",
-      display_order: 3,
-      access_level: "editor",
-    },
-  ];
+    // Se não tem usuário, não buscar apps
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
 
-  const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
+    async function loadApps() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('Dashboard: Buscando apps para:', user?.id);
+
+        const data = await getUserAppsWithPermissions(user?.id);
+        console.log('Dashboard: Apps carregados:', data.length);
+
+        setApps(data);
+      } catch (err) {
+        console.error('Erro ao carregar aplicações:', err);
+        setError('Não foi possível carregar as aplicações');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadApps();
+  }, [user?.id, authLoading]);
+
+
+  // Separar apps por display_order ou usar apenas uma lista ordenada
+  const sortedApps = [...apps].sort((a, b) => a.app_display_order - b.app_display_order);
+
+  const firstName = profile?.email?.split("@")[0] || "Usuário";
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,35 +73,44 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Primary Apps Section */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              Principais
-            </h2>
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <Loop className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Carregando aplicações...</p>
+            </div>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
-            {primaryApps.map((app) => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
+        )}
 
-        {/* Secondary Apps Section */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-8 w-1.5 bg-gradient-to-b from-slate-400 to-slate-300 rounded-full" />
-            <h2 className="text-xl font-semibold tracking-tight text-muted-foreground">
-              Outros Sistemas
-            </h2>
+        {/* Error */}
+        {error && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-destructive">{error}</p>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {secondaryApps.map((app) => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
-        </section>
+        )}
+
+        {/* Apps Grid */}
+        {!isLoading && !error && (
+          <section>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                Aplicações
+              </h2>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {sortedApps.map((app) => (
+                <AppCard key={app.app_id} app={app} />
+              ))}
+            </div>
+            {sortedApps.length === 0 && (
+              <p className="text-center text-muted-foreground py-12">
+                Nenhuma aplicação disponível
+              </p>
+            )}
+          </section>
+        )}
       </main>
 
       <Footer />

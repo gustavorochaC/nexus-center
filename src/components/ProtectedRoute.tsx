@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isLoading, isAdmin } = useAuth();
+  const { user, profile, isLoading, isAdmin } = useAuth();
   const location = useLocation();
 
   // Se Supabase não estiver disponível, permitir acesso livre
@@ -34,6 +34,11 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Bloquear usuário inativo
+  if (profile && profile.is_active === false) {
+    return <Navigate to="/login?reason=inactive" replace />;
+  }
+
   // Verificar se é admin quando necessário
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -41,4 +46,3 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   return <>{children}</>;
 }
-

@@ -1,33 +1,73 @@
 import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import type { Application, UserApplication } from '@/types/database';
 
-// Buscar todas as aplicações do usuário com suas permissões
+// Buscar todas as aplicações do usuário (Adaptado para Schema Atual)
 export async function getUserApplications(): Promise<UserApplication[]> {
   if (!isSupabaseAvailable) {
     return [];
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:6',message:'getUserApplications called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  const { data, error } = await supabase
-    .schema('Hub_Flex')
-    .rpc('hub_get_user_applications');
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:9',message:'RPC call completed',data:{hasError:!!error,hasData:!!data,dataLength:data?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
 
-  if (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:12',message:'RPC error',data:{errorMessage:error.message,errorCode:error.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    console.error('Erro ao buscar aplicações:', error);
+  // Fallback: Buscar direto da tabela usando fetch nativo
+  console.log('Service: Iniciando fetch nativo de hub_apps...');
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  // Garantir URL correta
+  const baseUrl = supabaseUrl.replace(/\/$/, '');
+  const targetUrl = `${baseUrl}/rest/v1/hub_apps?select=*`;
+
+  console.log(`Service: Fetch URL: ${targetUrl}`);
+
+  try {
+    // Configura headers básicos
+    const headers: Record<string, string> = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json'
+    };
+
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers
+    });
+
+    console.log(`Service: Fetch status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Service: Fetch Error Body:', errorText);
+      // Se for erro de autorização, pode ser a chave
+      if (response.status === 401 || response.status === 400) {
+        console.warn('⚠️ ATENÇÃO: Erro de API/Auth. Verifique se a chave VITE_SUPABASE_ANON_KEY é um JWT válido (ey...) e não uma chave opaca (sb_...).');
+      }
+      throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Service: Dados recebidos via fetch:', data);
+
+    // Mapear dados do banco (hub_apps) para o formato esperado pela UI (UserApplication)
+    return (data || []).map((app: any) => ({
+      id: app.id,
+      name: app.name,
+      description: app.category, // Usar category como descrição por enquanto
+      url: app.url,
+      base_url: app.url, // Compatibilidade
+      category: app.category,
+
+      // Campos que não existem no banco atual (Defaults)
+      icon: 'Box',
+      icon_name: 'Box',
+      color: '#6366f1',
+      display_order: 0,
+      is_active: app.is_public,
+      access_level: 'viewer', // Assumir acesso básico
+      port: 80 // Default
+    })) as unknown as UserApplication[];
+  } catch (error) {
+    console.error('Service: FETCH ERROR:', error);
     throw error;
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/42f313d9-a83d-4cd9-9e7e-36f72e5ca9c1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'applications.ts:17',message:'getUserApplications returning',data:{dataLength:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  return data || [];
 }
 
 // Buscar todas as aplicações (admin)
@@ -37,10 +77,9 @@ export async function getAllApplications(): Promise<Application[]> {
   }
 
   const { data, error } = await supabase
-    .schema('Hub_Flex')
-    .from('hub_applications')
+    .from('hub_apps')
     .select('*')
-    .order('display_order');
+    .order('created_at');
 
   if (error) {
     console.error('Erro ao buscar aplicações:', error);
@@ -59,8 +98,7 @@ export async function createApplication(
   }
 
   const { data, error } = await supabase
-    .schema('Hub_Flex')
-    .from('hub_applications')
+    .from('hub_apps')
     .insert(app)
     .select()
     .single();
@@ -83,8 +121,7 @@ export async function updateApplication(
   }
 
   const { data, error } = await supabase
-    .schema('Hub_Flex')
-    .from('hub_applications')
+    .from('hub_apps')
     .update(updates)
     .eq('id', id)
     .select()
@@ -105,8 +142,7 @@ export async function deleteApplication(id: string): Promise<void> {
   }
 
   const { error } = await supabase
-    .schema('Hub_Flex')
-    .from('hub_applications')
+    .from('hub_apps')
     .delete()
     .eq('id', id);
 
@@ -123,8 +159,7 @@ export async function getApplicationById(id: string): Promise<Application | null
   }
 
   const { data, error } = await supabase
-    .schema('Hub_Flex')
-    .from('hub_applications')
+    .from('hub_apps')
     .select('*')
     .eq('id', id)
     .single();
@@ -139,4 +174,5 @@ export async function getApplicationById(id: string): Promise<Application | null
 
   return data;
 }
+
 

@@ -23,8 +23,14 @@ export function Header() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   // Gerar iniciais do nome
@@ -41,6 +47,11 @@ export function Header() {
   const displayName = settings.displayName || profile?.full_name || user?.email || "Usuário";
   const displayEmail = user?.email || "";
   const initials = getInitials(settings.displayName || profile?.full_name);
+
+  // Se não tem usuário, não renderizar o menu
+  if (!user) {
+    return null;
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
