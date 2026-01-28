@@ -27,3 +27,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Documentação temporária e resumos
+*RESUMO*.md
+*TESTES*.md
+*VALIDACAO*.md
+*RESULTADO*.md
+*RELACAO*.md
+DEPLOYMENT_SUMMARY.md
+APPLY_MIGRATION.md
+reconcile-schema.md
+verify-schema-mismatch.md
+
+# Pasta de agentes (toda a pasta)
+.agent/
