@@ -175,4 +175,24 @@ export async function getApplicationById(id: string): Promise<Application | null
   return data;
 }
 
+// Atualizar ordem de múltiplos apps de uma vez
+export async function updateApplicationsOrder(
+  updates: { id: string; display_order: number }[]
+): Promise<void> {
+  if (!isSupabaseAvailable) {
+    throw new Error('Supabase não está disponível');
+  }
 
+  // Atualizar cada app individualmente
+  for (const update of updates) {
+    const { error } = await supabase
+      .from('hub_apps')
+      .update({ display_order: update.display_order })
+      .eq('id', update.id);
+
+    if (error) {
+      console.error('Erro ao atualizar ordem:', error);
+      throw error;
+    }
+  }
+}

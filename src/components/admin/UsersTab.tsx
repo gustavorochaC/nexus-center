@@ -137,7 +137,7 @@ export function UsersTab() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
@@ -147,39 +147,39 @@ export function UsersTab() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-semibold text-white">Usuários</h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <h2 className="text-xl font-semibold text-foreground">Usuários</h2>
+                    <p className="text-muted-foreground text-sm mt-1">
                         Gerencie os grupos de cada usuário
                     </p>
                 </div>
                 <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar usuário..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-10 bg-white/5 border-white/20 text-white"
+                        className="pl-10"
                     />
                 </div>
             </div>
 
             {/* Users List */}
             {users.length === 0 ? (
-                <Card className="bg-white/5 border-white/10">
+                <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Person className="h-16 w-16 text-slate-500 mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-2">Nenhum usuário cadastrado</h3>
-                        <p className="text-slate-400 text-center">
+                        <Person className="h-16 w-16 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum usuário cadastrado</h3>
+                        <p className="text-muted-foreground text-center">
                             Os usuários aparecerão aqui após se cadastrarem no sistema.
                         </p>
                     </CardContent>
                 </Card>
             ) : filteredUsers.length === 0 ? (
-                <Card className="bg-white/5 border-white/10">
+                <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Search className="h-16 w-16 text-slate-500 mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-2">Nenhum resultado</h3>
-                        <p className="text-slate-400 text-center">
+                        <Search className="h-16 w-16 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum resultado</h3>
+                        <p className="text-muted-foreground text-center">
                             Nenhum usuário encontrado para "{searchTerm}"
                         </p>
                     </CardContent>
@@ -191,34 +191,34 @@ export function UsersTab() {
                         return (
                             <Card
                                 key={user.id}
-                                className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-200"
+                                className="hover:shadow-md transition-all duration-200"
                             >
                                 <CardContent className="p-4">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 flex-1 min-w-0">
                                             {/* Avatar */}
-                                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold flex-shrink-0">
                                                 {getInitials(user.full_name, user.email)}
                                             </div>
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-white font-medium truncate">
+                                                    <p className="text-foreground font-medium truncate">
                                                         {user.full_name || user.email.split('@')[0]}
                                                     </p>
                                                     {user.role === 'admin' && (
-                                                        <Badge variant="secondary" className="bg-purple-500/20 text-purple-300 border-purple-400/30">
+                                                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200">
                                                             Admin
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-slate-400 text-sm truncate">{user.email}</p>
+                                                <p className="text-muted-foreground text-sm truncate">{user.email}</p>
 
                                                 {/* Group Tags */}
                                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                                     {groups.length === 0 ? (
-                                                        <span className="text-slate-500 text-xs">Sem grupos</span>
+                                                        <span className="text-muted-foreground text-xs">Sem grupos</span>
                                                     ) : (
                                                         groups.map(group => (
                                                             <span
@@ -243,7 +243,7 @@ export function UsersTab() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => openGroupsModal(user)}
-                                            className="border-white/20 text-white hover:bg-white/10 flex-shrink-0"
+                                            className="flex-shrink-0"
                                         >
                                             <Folder className="h-4 w-4 mr-2" />
                                             Grupos
@@ -258,27 +258,27 @@ export function UsersTab() {
 
             {/* Groups Modal */}
             <Dialog open={showGroupsModal} onOpenChange={setShowGroupsModal}>
-                <DialogContent className="bg-slate-900 border-white/10">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-white">
+                        <DialogTitle>
                             Gerenciar Grupos de {selectedUser?.full_name || selectedUser?.email}
                         </DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogDescription>
                             Selecione os grupos aos quais este usuário pertence
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4 max-h-[400px] overflow-y-auto">
                         {groups.length === 0 ? (
                             <div className="text-center py-8">
-                                <Folder className="h-12 w-12 text-slate-500 mx-auto mb-3" />
-                                <p className="text-slate-400">Nenhum grupo criado ainda</p>
-                                <p className="text-slate-500 text-sm mt-1">Crie grupos na aba "Grupos" primeiro</p>
+                                <Folder className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                <p className="text-muted-foreground">Nenhum grupo criado ainda</p>
+                                <p className="text-muted-foreground text-sm mt-1">Crie grupos na aba "Grupos" primeiro</p>
                             </div>
                         ) : (
                             groups.map(group => (
                                 <div
                                     key={group.id}
-                                    className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10"
+                                    className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent"
                                     onClick={() => handleToggleGroup(group.id)}
                                 >
                                     <Checkbox
@@ -292,9 +292,9 @@ export function UsersTab() {
                                         <Folder style={{ color: group.color }} className="h-4 w-4" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-white font-medium">{group.name}</p>
+                                        <p className="text-foreground font-medium">{group.name}</p>
                                         {group.description && (
-                                            <p className="text-slate-400 text-xs">{group.description}</p>
+                                            <p className="text-muted-foreground text-xs">{group.description}</p>
                                         )}
                                     </div>
                                 </div>
@@ -302,10 +302,10 @@ export function UsersTab() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowGroupsModal(false)}>
+                        <Button variant="outline" onClick={() => setShowGroupsModal(false)}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleSaveGroups} disabled={saving} className="bg-blue-500">
+                        <Button onClick={handleSaveGroups} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
                             {saving ? 'Salvando...' : 'Salvar'}
                         </Button>
                     </DialogFooter>

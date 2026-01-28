@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowBack, Apps, People, Folder } from '@mui/icons-material';
+import { ArrowBack, Apps, People, Folder, Security } from '@mui/icons-material';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { GroupsTab } from '@/components/admin/GroupsTab';
 import { UsersTab } from '@/components/admin/UsersTab';
-import { AppsTab } from '@/components/admin/AppsTab';
+import { AppsConfigTab } from '@/components/admin/AppsConfigTab';
+import { PermissionsTab } from '@/components/admin/PermissionsTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,8 +23,8 @@ export default function Admin() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -33,16 +34,16 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 onClick={() => navigate('/dashboard')}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowBack className="h-5 w-5 mr-2" />
                 Voltar ao Hub
@@ -51,11 +52,11 @@ export default function Admin() {
           </div>
 
           <div className="mt-4">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
               Painel Administrativo
             </h1>
-            <p className="text-slate-400 mt-1">
-              Gerencie aplicativos, usuários e grupos de permissão
+            <p className="text-muted-foreground mt-1">
+              Gerencie aplicativos, permissões, usuários e grupos
             </p>
           </div>
         </div>
@@ -64,24 +65,31 @@ export default function Admin() {
       {/* Content */}
       <div className="container mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-xl">
+          <TabsList className="bg-muted p-1 rounded-xl">
             <TabsTrigger
               value="apps"
-              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg px-6 py-2.5 gap-2"
+              className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               <Apps className="h-4 w-4" />
               Aplicativos
             </TabsTrigger>
             <TabsTrigger
+              value="permissions"
+              className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+            >
+              <Security className="h-4 w-4" />
+              Permissões
+            </TabsTrigger>
+            <TabsTrigger
               value="users"
-              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg px-6 py-2.5 gap-2"
+              className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               <People className="h-4 w-4" />
               Usuários
             </TabsTrigger>
             <TabsTrigger
               value="groups"
-              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white rounded-lg px-6 py-2.5 gap-2"
+              className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               <Folder className="h-4 w-4" />
               Grupos
@@ -89,7 +97,11 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="apps" className="mt-6">
-            <AppsTab />
+            <AppsConfigTab />
+          </TabsContent>
+
+          <TabsContent value="permissions" className="mt-6">
+            <PermissionsTab />
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">

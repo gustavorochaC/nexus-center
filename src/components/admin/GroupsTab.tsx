@@ -204,7 +204,7 @@ export function GroupsTab() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
@@ -214,14 +214,14 @@ export function GroupsTab() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold text-white">Grupos de Permissão</h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <h2 className="text-xl font-semibold text-foreground">Grupos de Permissão</h2>
+                    <p className="text-muted-foreground text-sm mt-1">
                         Crie grupos e defina permissões padrão para cada aplicativo
                     </p>
                 </div>
                 <Button
                     onClick={() => setShowCreateModal(true)}
-                    className="bg-blue-500 hover:bg-blue-600"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                     <Add className="h-4 w-4 mr-2" />
                     Criar Grupo
@@ -230,14 +230,14 @@ export function GroupsTab() {
 
             {/* Groups Grid */}
             {groups.length === 0 ? (
-                <Card className="bg-white/5 border-white/10">
+                <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Folder className="h-16 w-16 text-slate-500 mb-4" />
-                        <h3 className="text-lg font-medium text-white mb-2">Nenhum grupo criado</h3>
-                        <p className="text-slate-400 text-center mb-4">
+                        <Folder className="h-16 w-16 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium text-foreground mb-2">Nenhum grupo criado</h3>
+                        <p className="text-muted-foreground text-center mb-4">
                             Crie grupos para organizar permissões e facilitar a gestão de usuários.
                         </p>
-                        <Button onClick={() => setShowCreateModal(true)} className="bg-blue-500 hover:bg-blue-600">
+                        <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
                             Criar Primeiro Grupo
                         </Button>
                     </CardContent>
@@ -247,9 +247,9 @@ export function GroupsTab() {
                     {groups.map(group => (
                         <Card
                             key={group.id}
-                            className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-200"
+                            className="hover:shadow-md transition-all duration-200"
                         >
-                            <CardHeader className="pb-3">
+                            <CardHeader className="pb-3 border-b">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
                                         <div
@@ -259,24 +259,24 @@ export function GroupsTab() {
                                             <Folder style={{ color: group.color }} className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-white text-lg">{group.name}</CardTitle>
-                                            <CardDescription className="text-slate-400">
+                                            <CardTitle className="text-lg">{group.name}</CardTitle>
+                                            <CardDescription>
                                                 {memberCount[group.id] || 0} membros
                                             </CardDescription>
                                         </div>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-4">
                                 {group.description && (
-                                    <p className="text-slate-400 text-sm mb-4 line-clamp-2">{group.description}</p>
+                                    <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{group.description}</p>
                                 )}
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => openPermissionsModal(group)}
-                                        className="flex-1 border-white/20 text-white hover:bg-white/10"
+                                        className="flex-1"
                                     >
                                         Permissões
                                     </Button>
@@ -284,7 +284,7 @@ export function GroupsTab() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => openEditModal(group)}
-                                        className="text-slate-400 hover:text-white"
+                                        className="text-muted-foreground hover:text-foreground"
                                     >
                                         <Edit className="h-4 w-4" />
                                     </Button>
@@ -292,7 +292,7 @@ export function GroupsTab() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleDeleteGroup(group)}
-                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                        className="text-muted-foreground hover:text-destructive"
                                     >
                                         <Delete className="h-4 w-4" />
                                     </Button>
@@ -305,42 +305,40 @@ export function GroupsTab() {
 
             {/* Create Group Modal */}
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogContent className="bg-slate-900 border-white/10">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-white">Criar Novo Grupo</DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogTitle>Criar Novo Grupo</DialogTitle>
+                        <DialogDescription>
                             Defina um nome e cor para identificar o grupo.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-white">Nome</Label>
+                            <Label htmlFor="name">Nome</Label>
                             <Input
                                 id="name"
                                 value={formName}
                                 onChange={e => setFormName(e.target.value)}
                                 placeholder="Ex: Equipe Vendas"
-                                className="bg-white/5 border-white/20 text-white"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="description" className="text-white">Descrição (opcional)</Label>
+                            <Label htmlFor="description">Descrição (opcional)</Label>
                             <Input
                                 id="description"
                                 value={formDescription}
                                 onChange={e => setFormDescription(e.target.value)}
                                 placeholder="Ex: Acesso a metas e relatórios comerciais"
-                                className="bg-white/5 border-white/20 text-white"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-white">Cor</Label>
+                            <Label>Cor</Label>
                             <div className="flex gap-2 flex-wrap">
                                 {PRESET_COLORS.map(color => (
                                     <button
                                         key={color}
                                         onClick={() => setFormColor(color)}
-                                        className={`h-8 w-8 rounded-lg transition-all ${formColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''
+                                        className={`h-8 w-8 rounded-lg transition-all ${formColor === color ? 'ring-2 ring-primary ring-offset-2' : ''
                                             }`}
                                         style={{ backgroundColor: color }}
                                     />
@@ -349,10 +347,10 @@ export function GroupsTab() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => { setShowCreateModal(false); resetForm(); }}>
+                        <Button variant="outline" onClick={() => { setShowCreateModal(false); resetForm(); }}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleCreateGroup} disabled={saving || !formName.trim()} className="bg-blue-500">
+                        <Button onClick={handleCreateGroup} disabled={saving || !formName.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
                             {saving ? 'Criando...' : 'Criar Grupo'}
                         </Button>
                     </DialogFooter>
@@ -361,37 +359,35 @@ export function GroupsTab() {
 
             {/* Edit Group Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="bg-slate-900 border-white/10">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-white">Editar Grupo</DialogTitle>
+                        <DialogTitle>Editar Grupo</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="edit-name" className="text-white">Nome</Label>
+                            <Label htmlFor="edit-name">Nome</Label>
                             <Input
                                 id="edit-name"
                                 value={formName}
                                 onChange={e => setFormName(e.target.value)}
-                                className="bg-white/5 border-white/20 text-white"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="edit-description" className="text-white">Descrição</Label>
+                            <Label htmlFor="edit-description">Descrição</Label>
                             <Input
                                 id="edit-description"
                                 value={formDescription}
                                 onChange={e => setFormDescription(e.target.value)}
-                                className="bg-white/5 border-white/20 text-white"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-white">Cor</Label>
+                            <Label>Cor</Label>
                             <div className="flex gap-2 flex-wrap">
                                 {PRESET_COLORS.map(color => (
                                     <button
                                         key={color}
                                         onClick={() => setFormColor(color)}
-                                        className={`h-8 w-8 rounded-lg transition-all ${formColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''
+                                        className={`h-8 w-8 rounded-lg transition-all ${formColor === color ? 'ring-2 ring-primary ring-offset-2' : ''
                                             }`}
                                         style={{ backgroundColor: color }}
                                     />
@@ -400,10 +396,10 @@ export function GroupsTab() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => { setShowEditModal(false); resetForm(); }}>
+                        <Button variant="outline" onClick={() => { setShowEditModal(false); resetForm(); }}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleUpdateGroup} disabled={saving || !formName.trim()} className="bg-blue-500">
+                        <Button onClick={handleUpdateGroup} disabled={saving || !formName.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
                             {saving ? 'Salvando...' : 'Salvar'}
                         </Button>
                     </DialogFooter>
@@ -412,12 +408,12 @@ export function GroupsTab() {
 
             {/* Permissions Modal */}
             <Dialog open={showPermissionsModal} onOpenChange={setShowPermissionsModal}>
-                <DialogContent className="bg-slate-900 border-white/10 max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-white">
+                        <DialogTitle>
                             Permissões: {selectedGroup?.name}
                         </DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogDescription>
                             Defina o nível de acesso para cada aplicativo
                         </DialogDescription>
                     </DialogHeader>
@@ -427,7 +423,7 @@ export function GroupsTab() {
                             return (
                                 <div
                                     key={app.id}
-                                    className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+                                    className="flex items-center justify-between p-3 rounded-lg border"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div
@@ -437,9 +433,9 @@ export function GroupsTab() {
                                             <Folder style={{ color: app.color || '#3B82F6' }} className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <p className="text-white font-medium">{app.name}</p>
+                                            <p className="text-foreground font-medium">{app.name}</p>
                                             {app.description && (
-                                                <p className="text-slate-400 text-xs">{app.description}</p>
+                                                <p className="text-muted-foreground text-xs">{app.description}</p>
                                             )}
                                         </div>
                                     </div>
@@ -453,18 +449,18 @@ export function GroupsTab() {
                                             }
                                         }}
                                     >
-                                        <SelectTrigger className="w-40 bg-white/5 border-white/20 text-white">
+                                        <SelectTrigger className="w-40">
                                             <SelectValue placeholder="Não definido" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-white/10">
-                                            <SelectItem value="none" className="text-slate-400">Não definido</SelectItem>
-                                            <SelectItem value="editor" className="text-emerald-400">
+                                        <SelectContent>
+                                            <SelectItem value="none" className="text-muted-foreground">Não definido</SelectItem>
+                                            <SelectItem value="editor" className="text-emerald-600">
                                                 Editor (Acesso Total)
                                             </SelectItem>
-                                            <SelectItem value="viewer" className="text-blue-400">
+                                            <SelectItem value="viewer" className="text-blue-600">
                                                 Visualizador
                                             </SelectItem>
-                                            <SelectItem value="locked" className="text-slate-400">
+                                            <SelectItem value="locked" className="text-muted-foreground">
                                                 Bloqueado
                                             </SelectItem>
                                         </SelectContent>
@@ -474,7 +470,7 @@ export function GroupsTab() {
                         })}
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setShowPermissionsModal(false)} className="bg-blue-500">
+                        <Button onClick={() => setShowPermissionsModal(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
                             Concluído
                         </Button>
                     </DialogFooter>
