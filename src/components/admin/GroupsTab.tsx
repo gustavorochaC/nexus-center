@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Add, Edit, Delete, Folder, ColorLens, Close, Check } from '@mui/icons-material';
+import { Add, Edit, Delete, Folder, ColorLens, Close, Check, Loop } from '@mui/icons-material';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
     Card,
     CardContent,
@@ -50,12 +52,15 @@ const PRESET_COLORS = [
 ];
 
 export function GroupsTab() {
+    const { toast } = useToast();
+    const { isAdmin } = useAuth();
     const [groups, setGroups] = useState<Group[]>([]);
     const [apps, setApps] = useState<Application[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [groupPermissions, setGroupPermissions] = useState<GroupPermission[]>([]);
     const [memberCount, setMemberCount] = useState<Record<string, number>>({});
+    const [updatingPermission, setUpdatingPermission] = useState<string | null>(null); // appId sendo atualizado
 
     // Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -155,37 +160,98 @@ export function GroupsTab() {
     };
 
     const openPermissionsModal = async (group: Group) => {
+        if (!isAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Acesso negado',
+                description: 'Apenas administradores podem gerenciar permissões de grupos.',
+            });
+            return;
+        }
+
         setSelectedGroup(group);
         try {
             const permissions = await getGroupPermissions(group.id);
             setGroupPermissions(permissions);
             setShowPermissionsModal(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao carregar permissões:', error);
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao carregar permissões',
+                description: `Não foi possível carregar as permissões do grupo: ${errorMessage}`,
+            });
         }
     };
 
     const handleSetPermission = async (appId: string, accessLevel: AccessLevel) => {
         if (!selectedGroup) return;
+        if (!isAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Acesso negado',
+                description: 'Apenas administradores podem alterar permissões.',
+            });
+            return;
+        }
 
+        setUpdatingPermission(appId);
         try {
             await setGroupPermission(selectedGroup.id, appId, accessLevel);
             const permissions = await getGroupPermissions(selectedGroup.id);
             setGroupPermissions(permissions);
-        } catch (error) {
+            
+            const appName = apps.find(a => a.id === appId)?.name || 'aplicativo';
+            toast({
+                title: 'Permissão atualizada',
+                description: `Permissão para ${appName} foi definida como ${accessLevel === 'editor' ? 'Editor' : accessLevel === 'viewer' ? 'Visualizador' : 'Bloqueado'}.`,
+            });
+        } catch (error: any) {
             console.error('Erro ao definir permissão:', error);
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao atualizar permissão',
+                description: `Não foi possível atualizar a permissão: ${errorMessage}`,
+            });
+        } finally {
+            setUpdatingPermission(null);
         }
     };
 
     const handleRemovePermission = async (appId: string) => {
         if (!selectedGroup) return;
+        if (!isAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Acesso negado',
+                description: 'Apenas administradores podem remover permissões.',
+            });
+            return;
+        }
 
+        setUpdatingPermission(appId);
         try {
             await removeGroupPermission(selectedGroup.id, appId);
             const permissions = await getGroupPermissions(selectedGroup.id);
             setGroupPermissions(permissions);
-        } catch (error) {
+            
+            const appName = apps.find(a => a.id === appId)?.name || 'aplicativo';
+            toast({
+                title: 'Permissão removida',
+                description: `Permissão para ${appName} foi removida do grupo.`,
+            });
+        } catch (error: any) {
             console.error('Erro ao remover permissão:', error);
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao remover permissão',
+                description: `Não foi possível remover a permissão: ${errorMessage}`,
+            });
+        } finally {
+            setUpdatingPermission(null);
         }
     };
 
@@ -439,32 +505,42 @@ export function GroupsTab() {
                                             )}
                                         </div>
                                     </div>
-                                    <Select
-                                        value={currentLevel || 'none'}
-                                        onValueChange={(value) => {
-                                            if (value === 'none') {
-                                                handleRemovePermission(app.id);
-                                            } else {
-                                                handleSetPermission(app.id, value as AccessLevel);
-                                            }
-                                        }}
-                                    >
-                                        <SelectTrigger className="w-40">
-                                            <SelectValue placeholder="Não definido" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none" className="text-muted-foreground">Não definido</SelectItem>
-                                            <SelectItem value="editor" className="text-emerald-600">
-                                                Editor (Acesso Total)
-                                            </SelectItem>
-                                            <SelectItem value="viewer" className="text-blue-600">
-                                                Visualizador
-                                            </SelectItem>
-                                            <SelectItem value="locked" className="text-muted-foreground">
-                                                Bloqueado
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="relative">
+                                        <Select
+                                            value={currentLevel || 'none'}
+                                            onValueChange={(value) => {
+                                                if (value === 'none') {
+                                                    handleRemovePermission(app.id);
+                                                } else {
+                                                    handleSetPermission(app.id, value as AccessLevel);
+                                                }
+                                            }}
+                                            disabled={updatingPermission === app.id || !isAdmin}
+                                        >
+                                            <SelectTrigger className="w-40">
+                                                {updatingPermission === app.id ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <Loop className="h-4 w-4 animate-spin" />
+                                                        <span>Atualizando...</span>
+                                                    </div>
+                                                ) : (
+                                                    <SelectValue placeholder="Não definido" />
+                                                )}
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none" className="text-muted-foreground">Não definido</SelectItem>
+                                                <SelectItem value="editor" className="text-emerald-600">
+                                                    Editor (Acesso Total)
+                                                </SelectItem>
+                                                <SelectItem value="viewer" className="text-blue-600">
+                                                    Visualizador
+                                                </SelectItem>
+                                                <SelectItem value="locked" className="text-muted-foreground">
+                                                    Bloqueado
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             );
                         })}

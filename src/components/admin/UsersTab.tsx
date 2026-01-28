@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Person, Search, Folder, Add, Close, Check } from '@mui/icons-material';
+import { Person, Search, Folder, Add, Close, Check, Delete, Security, GppBad } from '@mui/icons-material';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,19 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Profile, Group } from '@/types/database';
 import {
     getAllProfiles,
@@ -23,9 +35,13 @@ import {
     getUserGroups,
     addUserToGroup,
     removeUserFromGroup,
+    deleteUser,
+    updateUserRole,
 } from '@/services/permissions';
 
 export function UsersTab() {
+    const { toast } = useToast();
+    const { user: currentUser, isAdmin } = useAuth();
     const [users, setUsers] = useState<Profile[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [userGroups, setUserGroups] = useState<Record<string, Group[]>>({});
@@ -35,6 +51,12 @@ export function UsersTab() {
     const [showGroupsModal, setShowGroupsModal] = useState(false);
     const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
     const [saving, setSaving] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [userToChangeRole, setUserToChangeRole] = useState<Profile | null>(null);
+    const [showRoleDialog, setShowRoleDialog] = useState(false);
+    const [changingRole, setChangingRole] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -132,6 +154,160 @@ export function UsersTab() {
             return name.substring(0, 2).toUpperCase();
         }
         return email.substring(0, 2).toUpperCase();
+    };
+
+    const openDeleteDialog = (user: Profile) => {
+        if (!isAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Acesso negado',
+                description: 'Apenas administradores podem excluir usuários.',
+            });
+            return;
+        }
+
+        setUserToDelete(user);
+        setShowDeleteDialog(true);
+    };
+
+    const handleDeleteUser = async () => {
+        if (!userToDelete || !isAdmin) return;
+
+        // Validações adicionais no frontend
+        if (currentUser?.id === userToDelete.id) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Você não pode excluir sua própria conta.',
+            });
+            setShowDeleteDialog(false);
+            setUserToDelete(null);
+            return;
+        }
+
+        const adminCount = users.filter(u => u.role === 'admin' && u.id !== userToDelete.id).length;
+        if (userToDelete.role === 'admin' && adminCount === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não é possível excluir o último administrador do sistema.',
+            });
+            setShowDeleteDialog(false);
+            setUserToDelete(null);
+            return;
+        }
+
+        try {
+            setDeleting(true);
+            await deleteUser(userToDelete.id);
+            
+            toast({
+                title: 'Usuário excluído',
+                description: `${userToDelete.email} foi excluído com sucesso.`,
+            });
+            
+            setShowDeleteDialog(false);
+            setUserToDelete(null);
+            await fetchData(); // Atualizar lista
+        } catch (error: any) {
+            console.error('Erro ao excluir usuário:', error);
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao excluir usuário',
+                description: errorMessage,
+            });
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const canChangeRole = (user: Profile): boolean => {
+        if (!isAdmin) return false;
+        if (currentUser?.id === user.id) return false; // Não pode alterar próprio role
+        
+        const adminCount = users.filter(u => u.role === 'admin' && u.id !== user.id).length;
+        if (user.role === 'admin' && adminCount === 0) return false; // Não pode remover último admin
+        
+        return true;
+    };
+
+    const openRoleDialog = (user: Profile) => {
+        if (!isAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Acesso negado',
+                description: 'Apenas administradores podem alterar roles.',
+            });
+            return;
+        }
+
+        setUserToChangeRole(user);
+        setShowRoleDialog(true);
+    };
+
+    const handleToggleRole = async () => {
+        if (!userToChangeRole || !isAdmin) return;
+
+        // Validações adicionais no frontend
+        if (currentUser?.id === userToChangeRole.id) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Você não pode alterar sua própria permissão.',
+            });
+            setShowRoleDialog(false);
+            setUserToChangeRole(null);
+            return;
+        }
+
+        const adminCount = users.filter(u => u.role === 'admin' && u.id !== userToChangeRole.id).length;
+        if (userToChangeRole.role === 'admin' && adminCount === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não é possível remover o último administrador do sistema.',
+            });
+            setShowRoleDialog(false);
+            setUserToChangeRole(null);
+            return;
+        }
+
+        const newRole = userToChangeRole.role === 'admin' ? 'user' : 'admin';
+
+        try {
+            setChangingRole(true);
+            await updateUserRole(userToChangeRole.id, newRole);
+            
+            toast({
+                title: 'Permissão atualizada',
+                description: `${userToChangeRole.email} agora é ${newRole === 'admin' ? 'administrador' : 'usuário comum'}.`,
+            });
+            
+            setShowRoleDialog(false);
+            setUserToChangeRole(null);
+            await fetchData(); // Atualizar lista
+        } catch (error: any) {
+            console.error('Erro ao alterar role:', error);
+            const errorMessage = error?.message || 'Erro desconhecido';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao alterar permissão',
+                description: errorMessage,
+            });
+        } finally {
+            setChangingRole(false);
+        }
+    };
+
+    const canDeleteUser = (user: Profile): boolean => {
+        if (!isAdmin) return false;
+        if (currentUser?.id === user.id) return false; // Não pode deletar a si mesmo
+        
+        const adminCount = users.filter(u => u.role === 'admin' && u.id !== user.id).length;
+        if (user.role === 'admin' && adminCount === 0) return false; // Não pode deletar último admin
+        
+        return true;
     };
 
     if (loading) {
@@ -239,15 +415,45 @@ export function UsersTab() {
                                         </div>
 
                                         {/* Actions */}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => openGroupsModal(user)}
-                                            className="flex-shrink-0"
-                                        >
-                                            <Folder className="h-4 w-4 mr-2" />
-                                            Grupos
-                                        </Button>
+                                        <div className="flex gap-2 flex-shrink-0">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openGroupsModal(user)}
+                                            >
+                                                <Folder className="h-4 w-4 mr-2" />
+                                                Grupos
+                                            </Button>
+                                            {canChangeRole(user) && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openRoleDialog(user)}
+                                                    className={user.role === 'admin' ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200' : ''}
+                                                >
+                                                    {user.role === 'admin' ? (
+                                                        <>
+                                                            <GppBad className="h-4 w-4 mr-2" />
+                                                            Remover Admin
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Security className="h-4 w-4 mr-2" />
+                                                            Tornar Admin
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openDeleteDialog(user)}
+                                                disabled={!canDeleteUser(user)}
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                                            >
+                                                <Delete className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -311,6 +517,82 @@ export function UsersTab() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o usuário <strong>{userToDelete?.email}</strong>?
+                            <br /><br />
+                            Esta ação não pode ser desfeita. O usuário será removido permanentemente do sistema.
+                            {userToDelete && userGroups[userToDelete.id]?.length > 0 && (
+                                <>
+                                    <br /><br />
+                                    <span className="text-amber-600 font-medium">
+                                        ⚠️ Este usuário está em {userGroups[userToDelete.id].length} grupo(s) e perderá todas as permissões associadas.
+                                    </span>
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteUser}
+                            disabled={deleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {deleting ? 'Excluindo...' : 'Excluir Usuário'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Role Change Confirmation Dialog */}
+            <AlertDialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {userToChangeRole?.role === 'admin' 
+                                ? 'Remover privilégios de administrador?' 
+                                : 'Tornar administrador?'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {userToChangeRole?.role === 'admin'
+                                ? (
+                                    <>
+                                        <strong>{userToChangeRole.email}</strong> perderá acesso ao painel administrativo e não poderá mais gerenciar usuários, aplicações e permissões.
+                                        <br /><br />
+                                        <span className="text-amber-600 font-medium">
+                                            ⚠️ Certifique-se de que há outros administradores no sistema antes de confirmar.
+                                        </span>
+                                    </>
+                                )
+                                : (
+                                    <>
+                                        <strong>{userToChangeRole?.email}</strong> terá acesso total ao painel administrativo, podendo gerenciar usuários, aplicações e permissões.
+                                        <br /><br />
+                                        <span className="text-blue-600 font-medium">
+                                            ℹ️ Este usuário poderá alterar roles de outros usuários e excluir contas.
+                                        </span>
+                                    </>
+                                )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={changingRole}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleToggleRole}
+                            disabled={changingRole}
+                            className={userToChangeRole?.role === 'admin' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                        >
+                            {changingRole ? 'Alterando...' : (userToChangeRole?.role === 'admin' ? 'Remover Admin' : 'Tornar Admin')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

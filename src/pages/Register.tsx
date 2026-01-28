@@ -42,10 +42,13 @@ export default function Register() {
     const { error } = await signUp(email, password, name);
 
     if (error) {
+      const errorMessage = getErrorMessage(error.message);
+      const isEmailExists = errorMessage.includes("já está cadastrado");
+      
       toast({
         variant: "destructive",
-        title: "Erro ao criar conta",
-        description: getErrorMessage(error.message),
+        title: isEmailExists ? "Email já cadastrado" : "Erro ao criar conta",
+        description: errorMessage,
       });
       setIsLoading(false);
       return;
@@ -167,12 +170,29 @@ export default function Register() {
 
 // Helper para mensagens de erro amigáveis
 function getErrorMessage(error: string): string {
+  // Normalizar mensagem de erro para comparação case-insensitive
+  const normalizedError = error.toLowerCase();
+  
   const errorMessages: Record<string, string> = {
-    "User already registered": "Este email já está cadastrado",
-    "Password should be at least 6 characters": "A senha deve ter pelo menos 6 caracteres",
-    "Unable to validate email address: invalid format": "Formato de email inválido",
-    "Signup requires a valid password": "A senha é obrigatória",
+    "user already registered": "Este email já está cadastrado. Se você já tem uma conta, faça login.",
+    "password should be at least 6 characters": "A senha deve ter pelo menos 6 caracteres",
+    "unable to validate email address: invalid format": "Formato de email inválido",
+    "signup requires a valid password": "A senha é obrigatória",
+    "email address is already registered": "Este email já está cadastrado. Se você já tem uma conta, faça login.",
+    "user with this email already exists": "Este email já está cadastrado. Se você já tem uma conta, faça login.",
   };
 
-  return errorMessages[error] || "Ocorreu um erro. Tente novamente.";
+  // Verificar se a mensagem contém alguma das chaves
+  for (const [key, message] of Object.entries(errorMessages)) {
+    if (normalizedError.includes(key)) {
+      return message;
+    }
+  }
+
+  // Se não encontrou correspondência exata, verificar padrões comuns
+  if (normalizedError.includes("already") && normalizedError.includes("registered")) {
+    return "Este email já está cadastrado. Se você já tem uma conta, faça login.";
+  }
+
+  return error || "Ocorreu um erro ao criar a conta. Tente novamente.";
 }

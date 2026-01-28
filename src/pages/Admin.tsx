@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ArrowBack, Apps, People, Folder, Security } from '@mui/icons-material';
+import { ArrowBack, Apps, People, Folder, Security, AdminPanelSettings } from '@mui/icons-material';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { GroupsTab } from '@/components/admin/GroupsTab';
 import { UsersTab } from '@/components/admin/UsersTab';
 import { AppsConfigTab } from '@/components/admin/AppsConfigTab';
 import { PermissionsTab } from '@/components/admin/PermissionsTab';
+import { PermissionManager } from '@/components/admin/PermissionManager';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -81,6 +82,13 @@ export default function Admin() {
               Permissões
             </TabsTrigger>
             <TabsTrigger
+              value="permission-matrix"
+              className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+            >
+              <AdminPanelSettings className="h-4 w-4" />
+              Matriz de Permissões
+            </TabsTrigger>
+            <TabsTrigger
               value="users"
               className="rounded-lg px-6 py-2.5 gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
@@ -102,6 +110,10 @@ export default function Admin() {
 
           <TabsContent value="permissions" className="mt-6">
             <PermissionsTab />
+          </TabsContent>
+
+          <TabsContent value="permission-matrix" className="mt-6">
+            <PermissionManager />
           </TabsContent>
 
           <TabsContent value="users" className="mt-6">

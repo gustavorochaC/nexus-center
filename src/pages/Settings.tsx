@@ -1,13 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { ManageAccounts, Delete, CloudUpload, Settings as SettingsIcon, Close, ArrowBack, Security, Apps } from '@mui/icons-material';
-import * as MuiIcons from '@mui/icons-material';
+import { ManageAccounts, Delete, CloudUpload, Settings as SettingsIcon, Close, ArrowBack } from '@mui/icons-material';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { PermissionManager } from '@/components/admin/PermissionManager';
-import { ApplicationManager } from '@/components/admin/ApplicationManager';
-import { getAllApplications } from '@/services/applications';
 import { Switch } from '@/components/ui/switch';
-import type { Application } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +43,7 @@ const timezones = [
   { value: 'UTC', label: 'UTC (GMT+0)' },
 ];
 
-type SettingsSection = 'account' | 'preferences' | 'permissions' | 'apps';
+type SettingsSection = 'account' | 'preferences';
 
 interface SettingsProps {
   onClose: () => void;
@@ -72,11 +67,6 @@ export default function Settings({ onClose }: SettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-
-  // Estados para classificação de apps
-  const [apps, setApps] = useState<Application[]>([]);
-  const [primaryAppIds, setPrimaryAppIds] = useState<Set<string>>(new Set());
-  const [isLoadingApps, setIsLoadingApps] = useState(false);
 
   // Atualizar campos quando as configurações ou perfil mudarem
   useEffect(() => {
@@ -128,77 +118,6 @@ export default function Settings({ onClose }: SettingsProps) {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  // Carregar classificação de apps do localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('primaryAppIds');
-    if (stored) {
-      try {
-        const ids = JSON.parse(stored) as string[];
-        setPrimaryAppIds(new Set(ids));
-      } catch (error) {
-        console.error('Erro ao carregar classificação de apps:', error);
-      }
-    }
-  }, []);
-
-  // Carregar apps quando a seção apps for ativada
-  useEffect(() => {
-    if (activeSection === 'apps') {
-      const fetchApps = async () => {
-        try {
-          setIsLoadingApps(true);
-          const allApps = await getAllApplications();
-          const activeApps = allApps.filter(app => app.is_active);
-          setApps(activeApps);
-        } catch (error) {
-          console.error('Erro ao carregar apps:', error);
-        } finally {
-          setIsLoadingApps(false);
-        }
-      };
-      fetchApps();
-    }
-  }, [activeSection]);
-
-  // Salvar classificação de apps no localStorage quando mudar
-  useEffect(() => {
-    if (primaryAppIds.size > 0 || localStorage.getItem('primaryAppIds')) {
-      localStorage.setItem('primaryAppIds', JSON.stringify(Array.from(primaryAppIds)));
-    }
-  }, [primaryAppIds]);
-
-  // Helper para pegar o ícone do Material-UI
-  const getIcon = (iconName: string) => {
-    const mapping: Record<string, string> = {
-      Truck: "LocalShipping",
-      BarChart3: "BarChart",
-      Target: "TrackChanges",
-      Users: "People",
-      Settings: "Settings",
-      LayoutGrid: "GridView",
-      Shield: "Security",
-      Image: "Image",
-      QrCode: "QrCode",
-      FileSearch: "FindInPage",
-      Car: "DirectionsCar",
-      Box: "Inventory2",
-      Database: "Storage",
-      FileText: "Description",
-      Calendar: "CalendarToday",
-      Mail: "Mail",
-      Phone: "Phone",
-      Map: "Map",
-      ShoppingCart: "ShoppingCart",
-      CreditCard: "CreditCard",
-      Package: "Inventory",
-      Building: "Business",
-      Home: "Home",
-    };
-
-    const muiName = mapping[iconName] || iconName;
-    const IconComponent = (MuiIcons as any)[muiName];
-    return IconComponent || MuiIcons.Extension;
-  };
 
   // Focus trap
   useEffect(() => {
@@ -467,37 +386,6 @@ export default function Settings({ onClose }: SettingsProps) {
                     </div>
 
                     {/* Seção Administrador - Apenas para admins */}
-                    {isAdmin && (
-                      <div>
-                        <div className="px-3 py-2 bg-muted rounded-lg mb-2">
-                          <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-                            Administrador
-                          </h3>
-                        </div>
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => setActiveSection('permissions')}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'permissions'
-                              ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                              }`}
-                          >
-                            <Security className="h-5 w-5" />
-                            <span>Permissões</span>
-                          </button>
-                          <button
-                            onClick={() => setActiveSection('apps')}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeSection === 'apps'
-                              ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                              }`}
-                          >
-                            <Apps className="h-5 w-5" />
-                            <span>Apps</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </nav>
                 </div>
 
@@ -717,89 +605,6 @@ export default function Settings({ onClose }: SettingsProps) {
                       </div>
                     )}
 
-                    {activeSection === 'permissions' && isAdmin && (
-                      <div className="space-y-6 animate-in fade-in-0 duration-200">
-                        <PermissionManager />
-                      </div>
-                    )}
-
-                    {activeSection === 'apps' && (
-                      <div className="space-y-6 animate-in fade-in-0 duration-200">
-                        <ApplicationManager />
-
-                        {/* Card de Classificação de Apps */}
-                        <Card className="rounded-xl bg-card border-border shadow-md">
-                          <CardHeader>
-                            <CardTitle>Definir Apps Principais</CardTitle>
-                            <CardDescription>
-                              Marque os apps que devem aparecer na seção "Principais" do Dashboard
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            {isLoadingApps ? (
-                              <div className="flex items-center justify-center py-8">
-                                <p className="text-sm text-muted-foreground">Carregando apps...</p>
-                              </div>
-                            ) : apps.length === 0 ? (
-                              <div className="flex items-center justify-center py-8">
-                                <p className="text-sm text-muted-foreground">Nenhum app ativo encontrado</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {apps
-                                  .sort((a, b) => a.display_order - b.display_order)
-                                  .map((app) => (
-                                    <div
-                                      key={app.id}
-                                      className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors min-h-[60px]"
-                                    >
-                                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div
-                                          className="flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0"
-                                          style={{ backgroundColor: `${app.color}20` }}
-                                        >
-                                          {(() => {
-                                            const Icon = getIcon(app.icon);
-                                            return <Icon className="h-5 w-5" style={{ color: app.color }} />;
-                                          })()}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium text-foreground truncate">
-                                            {app.name}
-                                          </p>
-                                          {app.description && (
-                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                              {app.description}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-3 flex-shrink-0">
-                                        <span className="text-xs text-muted-foreground hidden sm:inline">
-                                          {primaryAppIds.has(app.id) ? 'Principal' : 'Secundário'}
-                                        </span>
-                                        <Switch
-                                          checked={primaryAppIds.has(app.id)}
-                                          onCheckedChange={(checked) => {
-                                            const newSet = new Set(primaryAppIds);
-                                            if (checked) {
-                                              newSet.add(app.id);
-                                            } else {
-                                              newSet.delete(app.id);
-                                            }
-                                            setPrimaryAppIds(newSet);
-                                          }}
-                                          aria-label={`Marcar ${app.name} como principal`}
-                                        />
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

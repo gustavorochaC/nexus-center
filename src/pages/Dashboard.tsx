@@ -50,8 +50,10 @@ export default function Dashboard() {
   }, [user?.id, authLoading]);
 
 
-  // Separar apps por display_order ou usar apenas uma lista ordenada
+  // Separar apps por display_order e categoria
   const sortedApps = [...apps].sort((a, b) => a.app_display_order - b.app_display_order);
+  const primaryApps = sortedApps.filter(app => app.app_category === 'Primário');
+  const secondaryApps = sortedApps.filter(app => app.app_category !== 'Primário');
 
   const firstName = profile?.email?.split("@")[0] || "Usuário";
 
@@ -92,24 +94,59 @@ export default function Dashboard() {
 
         {/* Apps Grid */}
         {!isLoading && !error && (
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                Aplicações
-              </h2>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {sortedApps.map((app) => (
-                <AppCard key={app.app_id} app={app} />
-              ))}
-            </div>
-            {sortedApps.length === 0 && (
-              <p className="text-center text-muted-foreground py-12">
-                Nenhuma aplicação disponível
-              </p>
+          <>
+            {/* Seção Principal */}
+            {primaryApps.length > 0 && (
+              <section className="mb-12">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                    Principal
+                  </h2>
+                </div>
+                <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                  {primaryApps.map((app) => (
+                    <AppCard key={app.app_id} app={app} variant="primary" />
+                  ))}
+                </div>
+              </section>
             )}
-          </section>
+
+            {/* Seção Secundário */}
+            <section>
+              {primaryApps.length > 0 && (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                    Secundário
+                  </h2>
+                </div>
+              )}
+              {primaryApps.length === 0 && (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-8 w-1.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                    Aplicações
+                  </h2>
+                </div>
+              )}
+              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {secondaryApps.map((app) => (
+                  <AppCard key={app.app_id} app={app} variant="secondary" />
+                ))}
+              </div>
+              {sortedApps.length === 0 && (
+                <p className="text-center text-muted-foreground py-12">
+                  Nenhuma aplicação disponível
+                </p>
+              )}
+              {primaryApps.length > 0 && secondaryApps.length === 0 && (
+                <p className="text-center text-muted-foreground py-12">
+                  Nenhuma aplicação secundária disponível
+                </p>
+              )}
+            </section>
+          </>
         )}
       </main>
 

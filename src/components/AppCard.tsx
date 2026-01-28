@@ -16,6 +16,7 @@ type AppData = UserApplication | UserAppWithPermission;
 
 interface AppCardProps {
   app: AppData;
+  variant?: 'primary' | 'secondary';
 }
 
 // Helper para pegar o ícone dinamicamente do Material UI
@@ -68,10 +69,12 @@ function normalizeApp(app: AppData) {
   };
 }
 
-export function AppCard({ app: rawApp }: AppCardProps) {
+export function AppCard({ app: rawApp, variant = 'secondary' }: AppCardProps) {
   const app = normalizeApp(rawApp);
   const { name, icon_name, url, access_level, is_active } = app;
   const { toast } = useToast();
+  
+  const isPrimary = variant === 'primary';
 
   const isLocked = access_level === "locked";
   const isEditor = access_level === "editor";
@@ -110,7 +113,8 @@ export function AppCard({ app: rawApp }: AppCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex flex-col rounded-2xl border bg-card p-6 transition-all duration-300",
+        "group relative flex flex-col rounded-2xl border bg-card transition-all duration-300",
+        isPrimary ? "p-8" : "p-6",
         isLocked || isInactive
           ? "opacity-60 cursor-not-allowed border-border"
           : "cursor-pointer border-border/50 hover:border-transparent hover:shadow-xl hover:-translate-y-1"
@@ -136,10 +140,11 @@ export function AppCard({ app: rawApp }: AppCardProps) {
       )}
 
       {/* Icon with gradient background */}
-      <div className="relative mb-5">
+      <div className={cn("relative", isPrimary ? "mb-6" : "mb-5")}>
         <div
           className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-2xl transition-all duration-300",
+            "flex items-center justify-center rounded-2xl transition-all duration-300",
+            isPrimary ? "h-20 w-20" : "h-16 w-16",
             isLocked || isInactive ? "bg-muted/30" : "group-hover:scale-110 shadow-lg"
           )}
           style={
@@ -151,7 +156,10 @@ export function AppCard({ app: rawApp }: AppCardProps) {
           }
         >
           <Icon
-            className="h-8 w-8 transition-transform duration-300 group-hover:scale-110"
+            className={cn(
+              "transition-transform duration-300 group-hover:scale-110",
+              isPrimary ? "h-10 w-10" : "h-8 w-8"
+            )}
             style={{ color: (isLocked || isInactive) ? "hsl(var(--muted-foreground))" : defaultColor }}
           />
         </div>
@@ -168,9 +176,12 @@ export function AppCard({ app: rawApp }: AppCardProps) {
       </div>
 
       {/* Content */}
-      <div className="mb-5 flex-1">
+      <div className={cn("flex-1", isPrimary ? "mb-6" : "mb-5")}>
         <div className="mb-2 flex items-center gap-2 flex-wrap">
-          <h3 className="text-xl font-semibold text-card-foreground tracking-tight">
+          <h3 className={cn(
+            "font-semibold text-card-foreground tracking-tight",
+            isPrimary ? "text-2xl" : "text-xl"
+          )}>
             {name}
           </h3>
           {isInactive && (
@@ -206,7 +217,10 @@ export function AppCard({ app: rawApp }: AppCardProps) {
             </Badge>
           )}
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className={cn(
+          "text-muted-foreground leading-relaxed",
+          isPrimary ? "text-base" : "text-sm"
+        )}>
           {app.description || app.category || "Aplicação do sistema"}
         </p>
       </div>

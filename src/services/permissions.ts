@@ -320,7 +320,6 @@ export async function getGroupPermissions(groupId: string): Promise<GroupPermiss
     access_level: p.access_level,
     granted_at: p.granted_at,
     app_name: p.app_name,
-    app_icon: p.app_icon,
     app_color: p.app_color,
   }));
 }
@@ -334,16 +333,23 @@ export async function setGroupPermission(
 
   const currentUser = (await supabase.auth.getUser()).data.user;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('hub_group_permissions')
     .upsert({
       group_id: groupId,
       app_id: appId,
       access_level: accessLevel,
       granted_by: currentUser?.id,
-    }, { onConflict: 'group_id,app_id' });
+    }, { 
+      onConflict: 'group_id,app_id',
+      ignoreDuplicates: false 
+    })
+    .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao definir permissão de grupo:', error);
+    throw new Error(`Erro ao definir permissão: ${error.message || 'Erro desconhecido'}`);
+  }
 }
 
 export async function removeGroupPermission(groupId: string, appId: string): Promise<void> {
@@ -355,6 +361,31 @@ export async function removeGroupPermission(groupId: string, appId: string): Pro
     .match({ group_id: groupId, app_id: appId });
 
   if (error) throw error;
+}
+
+// ============================================
+// GERENCIAMENTO DE USUÁRIOS
+// ============================================
+
+export async function deleteUser(userId: string): Promise<void> {
+  if (!isSupabaseAvailable) throw new Error('Supabase não está disponível');
+
+  const { data, error } = await supabase.rpc('delete_user', {
+    target_user_id: userId
+  });
+
+  if (error) {
+    console.error('Erro ao deletar usuário:', error);
+    throw new Error(error.message || 'Erro ao deletar usuário');
+  }
+
+  // Verificar resposta da função RPC
+  if (data && typeof data === 'object' && 'success' in data) {
+    const result = data as { success: boolean; error?: string; message?: string };
+    if (!result.success) {
+      throw new Error(result.error || 'Erro ao deletar usuário');
+    }
+  }
 }
 
 // ============================================

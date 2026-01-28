@@ -44,7 +44,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // PGRST116 = "JSON object requested, multiple (or no) rows returned"
         // Isso significa que o perfil ainda não foi criado pelo trigger
         if (error.code === 'PGRST116') {
-          console.log('Auth: perfil ainda não existe (aguardando trigger)');
+          console.warn('Auth: perfil ainda não existe para usuário', userId);
+          // Tentar criar perfil manualmente se o trigger falhou
+          // Isso pode acontecer se o trigger não executou corretamente
+          try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData?.user) {
+              // Usar RPC ou insert direto com tipo any para contornar problema de tipos do Supabase
+              const { error: insertError } = await (supabase
+                .from('hub_profiles') as any)
+                .insert({
+                  id: userId,
+                  email: userData.user.email || '',
+                  role: 'user',
+                  is_active: true,
+                })
+                .select()
+                .single();
+              
+              if (!insertError) {
+                console.log('Auth: perfil criado manualmente para usuário', userId);
+                // Buscar o perfil recém-criado
+                const { data: newProfile } = await supabase
+                  .from('hub_profiles')
+                  .select('*')
+                  .eq('id', userId)
+                  .single();
+                return newProfile as Profile | null;
+              }
+            }
+          } catch (createError) {
+            console.error('Auth: erro ao tentar criar perfil manualmente:', createError);
+          }
           return null;
         }
         console.error('Erro ao buscar perfil:', error);
