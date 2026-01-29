@@ -71,7 +71,7 @@ export function Header() {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="hidden text-left sm:block">
+            <div className="block text-left">
               <p className="text-sm font-medium text-foreground">
                 {displayName}
               </p>

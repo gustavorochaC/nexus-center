@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AppCard } from "@/components/AppCard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
 import { useSettingsModal } from "@/contexts/SettingsModalContext";
 import Settings from "@/pages/Settings";
 import { getUserAppsWithPermissions } from "@/services/permissions";
@@ -11,6 +12,7 @@ import type { UserAppWithPermission } from "@/types/database";
 
 export default function Dashboard() {
   const { profile, user, isLoading: authLoading } = useAuth();
+  const { settings } = useUserSettings();
   const { isOpen, closeSettings } = useSettingsModal();
   const [apps, setApps] = useState<UserAppWithPermission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +57,7 @@ export default function Dashboard() {
   const primaryApps = sortedApps.filter(app => app.app_category === 'Primário');
   const secondaryApps = sortedApps.filter(app => app.app_category !== 'Primário');
 
-  const firstName = profile?.email?.split("@")[0] || "Usuário";
+  const displayName = settings.displayName || profile?.full_name || user?.email || "Usuário";
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,7 +70,7 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-3 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Bem vindo de volta, {firstName}
+            Bem vindo de volta, {displayName}
           </h1>
           <p className="text-lg text-muted-foreground">
             Selecione o sistema que deseja acessar
