@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ManageAccounts, Delete, CloudUpload, Settings as SettingsIcon, Close, ArrowBack } from '@mui/icons-material';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +52,7 @@ interface SettingsProps {
 
 export default function Settings({ onClose }: SettingsProps) {
   const { settings, updateSettings } = useUserSettings();
-  const { user, profile, updateEmail, updatePassword, isAdmin } = useAuth();
+  const { user, profile, updateEmail, updatePassword, refreshProfile, isAdmin } = useAuth();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   // Inicializar displayName com o nome do perfil se não houver um salvo
   const initialDisplayName = settings.displayName || profile?.full_name || user?.email?.split('@')[0] || '';
@@ -67,6 +68,29 @@ export default function Settings({ onClose }: SettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const AVATAR_BUCKET = 'avatars';
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+  const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
+
+  // Revogar object URL ao desmontar para evitar vazamento de memória
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  // Sincronizar avatar do perfil para settings quando carregar (ex.: outro dispositivo)
+  useEffect(() => {
+    if (profile?.avatar_url && !settings.avatarUrl) {
+      updateSettings({ avatarUrl: profile.avatar_url });
+    }
+  }, [profile?.avatar_url, settings.avatarUrl, updateSettings]);
 
   // Atualizar campos quando as configurações ou perfil mudarem
   useEffect(() => {
@@ -84,7 +108,7 @@ export default function Settings({ onClose }: SettingsProps) {
     if (avatarUrl !== settings.avatarUrl) {
       setAvatarUrl(settings.avatarUrl);
     }
-  }, [settings, profile, user, displayName, language, timezone, avatarUrl]);
+  }, [settings, profile, user, displayName, language, timezone]);
 
   // Atualizar email quando user mudar
   useEffect(() => {
@@ -183,6 +207,18 @@ export default function Settings({ onClose }: SettingsProps) {
       }
     }
 
+    // Atualizar avatar_url no backend (hub_profiles) se houver mudança
+    if (isSupabaseAvailable && user && avatarUrl !== profile?.avatar_url) {
+      const { error: profileError } = await (
+        supabase.from('hub_profiles') as unknown as { update: (v: { avatar_url: string | null }) => { eq: (c: string, v: string) => Promise<{ error: Error | null }> } }
+      ).update({ avatar_url: avatarUrl || null }).eq('id', user.id);
+      if (profileError) {
+        alert(`Erro ao salvar foto de perfil: ${profileError.message}`);
+        return;
+      }
+      await refreshProfile();
+    }
+
     // Atualizar configurações do usuário
     updateSettings({
       displayName: displayName.trim(),
@@ -231,29 +267,56 @@ export default function Settings({ onClose }: SettingsProps) {
     onClose();
   };
 
-  // Função para validar e processar arquivo de imagem
-  const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione apenas arquivos de imagem.');
+  // Upload de imagem para Storage e definição da URL pública
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setUploadError('Use apenas PNG, JPG ou GIF.');
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setUploadError('A imagem deve ter no máximo 5MB.');
+      return;
+    }
+    if (!user || !isSupabaseAvailable) {
+      setUploadError('Não foi possível enviar a foto. Tente fazer login novamente.');
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      alert('A imagem deve ter no máximo 5MB.');
-      return;
+    setUploadError(null);
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
+    const previewUrl = URL.createObjectURL(file);
+    objectUrlRef.current = previewUrl;
+    setAvatarUrl(previewUrl);
+    setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setAvatarUrl(result);
-    };
-    reader.onerror = () => {
-      alert('Erro ao ler o arquivo. Tente novamente.');
-    };
-    reader.readAsDataURL(file);
-  };
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${user.id}/avatar.${ext}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        setUploadError(uploadError.message || 'Falha no upload. Tente novamente.');
+        return;
+      }
+
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+      const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+      setAvatarUrl(urlData.publicUrl);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Erro ao enviar a imagem.');
+    } finally {
+      setIsUploading(false);
+    }
+  }, [user, AVATAR_BUCKET, MAX_AVATAR_BYTES, ALLOWED_TYPES]);
 
   // Handlers para drag and drop
   const handleDragEnter = (e: React.DragEvent) => {
@@ -291,12 +354,35 @@ export default function Settings({ onClose }: SettingsProps) {
     }
   };
 
-  const handleRemovePhoto = () => {
-    setAvatarUrl('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleRemovePhoto = useCallback(async () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
-  };
+    if (!user || !isSupabaseAvailable) {
+      setAvatarUrl('');
+      updateSettings({ avatarUrl: '' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setUploadError(null);
+    const pathsToTry = [`${user.id}/avatar.png`, `${user.id}/avatar.jpg`, `${user.id}/avatar.jpeg`, `${user.id}/avatar.gif`];
+    for (const p of pathsToTry) {
+      await supabase.storage.from(AVATAR_BUCKET).remove([p]);
+    }
+
+    const { error: profileError } = await (
+      supabase.from('hub_profiles') as unknown as { update: (v: { avatar_url: null }) => { eq: (c: string, v: string) => Promise<{ error: Error | null }> } }
+    ).update({ avatar_url: null }).eq('id', user.id);
+
+    if (!profileError) {
+      await refreshProfile();
+    }
+    setAvatarUrl('');
+    updateSettings({ avatarUrl: '' });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [user, updateSettings, refreshProfile]);
 
   // Gerar iniciais para fallback
   const getInitials = (name: string | undefined | null): string => {
@@ -415,39 +501,43 @@ export default function Settings({ onClose }: SettingsProps) {
                               </Avatar>
 
                               <div className="flex-1 space-y-3 w-full">
-                                <div
+                                <label
+                                  htmlFor="avatar-file-input"
+                                  className={`block border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${isUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${isDragging && !isUploading ? 'border-primary bg-primary/10 scale-105' : 'border-white/20 hover:border-primary/50 hover:bg-white/5'}`}
                                   onDragEnter={handleDragEnter}
                                   onDragOver={handleDragOver}
                                   onDragLeave={handleDragLeave}
                                   onDrop={handleDrop}
-                                  onClick={() => fileInputRef.current?.click()}
-                                  className={`
-                                  border-2 border-dashed rounded-lg p-6 cursor-pointer transition-all duration-200
-                                  ${isDragging
-                                      ? 'border-primary bg-primary/10 scale-105'
-                                      : 'border-white/20 hover:border-primary/50 hover:bg-white/5'
-                                    }
-                                `}
+                                  aria-label="Enviar foto de perfil. Arraste uma imagem ou clique para selecionar."
+                                  aria-busy={isUploading}
                                 >
                                   <input
                                     ref={fileInputRef}
+                                    id="avatar-file-input"
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/png,image/jpeg,image/gif"
                                     onChange={handleFileInputChange}
+                                    disabled={isUploading}
                                     className="hidden"
+                                    aria-label="Selecionar imagem para foto de perfil"
                                   />
-                                  <div className="flex flex-col items-center justify-center gap-2 text-center">
+                                  <div className="flex flex-col items-center justify-center gap-2 text-center pointer-events-none">
                                     <CloudUpload className="h-8 w-8 text-muted-foreground" />
                                     <div>
                                       <p className="text-sm font-medium">
-                                        {isDragging ? 'Solte a imagem aqui' : 'Arraste uma imagem ou clique para selecionar'}
+                                        {isUploading ? 'Enviando...' : isDragging ? 'Solte a imagem aqui' : 'Arraste uma imagem ou clique para selecionar'}
                                       </p>
                                       <p className="text-xs text-muted-foreground mt-1">
                                         PNG, JPG ou GIF até 5MB
                                       </p>
                                     </div>
                                   </div>
-                                </div>
+                                </label>
+                                {uploadError && (
+                                  <p className="text-sm text-destructive" role="alert" aria-live="assertive">
+                                    {uploadError}
+                                  </p>
+                                )}
 
                                 {avatarUrl && (
                                   <Button
@@ -611,13 +701,13 @@ export default function Settings({ onClose }: SettingsProps) {
             </CardContent>
 
             <CardFooter className="flex justify-end gap-3 p-6 border-t border-border">
-              <Button variant="outline" onClick={handleCancel} className="min-h-[44px] min-w-[44px]">
+              <Button variant="outline" onClick={handleCancel} className="min-h-[44px] min-w-[44px]" disabled={isUploading}>
                 Cancelar
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!hasChanges}
-                className={`min-h-[44px] min-w-[44px] ${hasChanges
+                disabled={!hasChanges || isUploading}
+                className={`min-h-[44px] min-w-[44px] ${hasChanges && !isUploading
                   ? "bg-green-600 hover:bg-green-700 text-white"
                   : "bg-green-200 text-green-800 cursor-not-allowed"
                   }`}

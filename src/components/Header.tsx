@@ -64,8 +64,8 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger className="group flex items-center gap-3 rounded-full border border-border/50 bg-background/50 px-3 py-2 transition-all duration-200 hover:bg-accent/50 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20">
             <Avatar className="h-8 w-8 ring-2 ring-background">
-              {settings.avatarUrl && (
-                <AvatarImage src={settings.avatarUrl} alt={displayName} />
+              {(settings.avatarUrl || profile?.avatar_url) && (
+                <AvatarImage src={settings.avatarUrl || profile?.avatar_url || ''} alt={displayName} />
               )}
               <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold">
                 {initials}

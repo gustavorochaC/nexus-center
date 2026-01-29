@@ -9,6 +9,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   full_name?: string;
+  avatar_url?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
